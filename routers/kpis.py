@@ -3,7 +3,7 @@ from fastapi.templating import Jinja2Templates
 from datetime import date
 import pandas as pd
 
-from db import query_df
+from db import query_df, table_exists
 
 router = APIRouter(tags=["kpis"])
 templates = Jinja2Templates(directory="templates")
@@ -184,5 +184,109 @@ async def get_multi_attempts(
             "request": request,
             "rows": table_rows,
             "soc_columns": soc_columns,
+        },
+    )
+
+
+@router.get("/kpi/evolution")
+async def get_kpi_evolution(
+    request: Request,
+    sites: str = Query(default=""),
+    date_debut: date = Query(default=None),
+    date_fin: date = Query(default=None),
+    error_types: str = Query(default=""),
+    moments: str = Query(default=""),
+):
+    """Évolution mensuelle du taux de réussite global."""
+
+    table_name = "kpi_evo"
+    if not table_exists(table_name):
+        return templates.TemplateResponse(
+            "partials/evolution.html",
+            {
+                "request": request,
+                "error_message": "La table `kpi_evo` est introuvable dans la base.",
+            },
+        )
+
+    try:
+        df = query_df(f"SELECT * FROM {table_name}")
+    except Exception as exc:  # pragma: no cover - sécurité
+        return templates.TemplateResponse(
+            "partials/evolution.html",
+            {
+                "request": request,
+                "error_message": f"Impossible de charger les données : {exc}",
+            },
+        )
+
+    if df.empty:
+        return templates.TemplateResponse(
+            "partials/evolution.html",
+            {
+                "request": request,
+                "no_data": True,
+            },
+        )
+
+    month_candidates = ["mois", "Mois", "month"]
+    rate_candidates = ["tr", "taux_reussite", "taux", "success_rate"]
+
+    month_col = next((col for col in month_candidates if col in df.columns), None)
+    rate_col = next((col for col in rate_candidates if col in df.columns), None)
+
+    if not month_col or not rate_col:
+        return templates.TemplateResponse(
+            "partials/evolution.html",
+            {
+                "request": request,
+                "error_message": "Colonnes `mois` et `taux de réussite` manquantes dans `kpi_evo`.",
+            },
+        )
+
+    df[month_col] = pd.to_datetime(df[month_col], errors="coerce")
+    df = df.dropna(subset=[month_col])
+    df = df.sort_values(month_col)
+    df["mois_affiche"] = df[month_col].dt.strftime("%Y-%m")
+
+    df["taux_val"] = pd.to_numeric(df[rate_col], errors="coerce")
+    df = df.dropna(subset=["taux_val"])
+
+    if df.empty:
+        return templates.TemplateResponse(
+            "partials/evolution.html",
+            {
+                "request": request,
+                "no_data": True,
+            },
+        )
+
+    taux_series = df["taux_val"]
+    if taux_series.between(0, 1).all():
+        df["taux_pct"] = taux_series * 100
+    else:
+        df["taux_pct"] = taux_series
+
+    df["taux_pct"] = df["taux_pct"].round(1)
+
+    rows = df[["mois_affiche", "taux_pct"]].to_dict("records")
+    chart_data = {
+        "months": [r["mois_affiche"] for r in rows],
+        "values": [r["taux_pct"] for r in rows],
+    }
+
+    latest_rate = rows[-1]["taux_pct"] if rows else None
+    previous_rate = rows[-2]["taux_pct"] if len(rows) > 1 else None
+    variation = latest_rate - previous_rate if latest_rate is not None and previous_rate is not None else None
+
+    return templates.TemplateResponse(
+        "partials/evolution.html",
+        {
+            "request": request,
+            "rows": rows,
+            "chart_data": chart_data,
+            "latest_rate": latest_rate,
+            "variation": variation,
+            "previous_rate": previous_rate,
         },
     )
