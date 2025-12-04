@@ -1,0 +1,122 @@
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+    <div>
+        <div style="font-size:1.25rem; font-weight:700; color:var(--color-text);">📋 Historique des Défauts</div>
+        <div style="color:var(--color-text-muted);">Filtré selon la période et les sites sélectionnés</div>
+    </div>
+</div>
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    <div class="stat-card">
+        <div class="stat-label">Total défauts</div>
+        <div class="stat-value">{{ nb_total }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">En cours</div>
+        <div class="stat-value" style="color:#ef4444;">{{ nb_en_cours }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Résolus</div>
+        <div class="stat-value" style="color:#10b981;">{{ nb_resolus }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Durée moyenne (jours)</div>
+        <div class="stat-value">{{ '%.1f' % duree_moyenne }}</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1.25rem;">
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
+        <div style="font-weight:700; margin-bottom:0.75rem;">Top 5 Equipements</div>
+        {% if top_equipements %}
+        <table class="recap-table" style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align:left; padding:0.5rem; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Equipement</th>
+                    <th style="text-align:right; padding:0.5rem; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Nombre</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in top_equipements %}
+                <tr>
+                    <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ item.eqp }}</td>
+                    <td style="padding:0.5rem; border-bottom:1px solid var(--color-border); text-align:right;">{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="color:var(--color-text-muted);">Aucune donnée disponible.</div>
+        {% endif %}
+    </div>
+
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
+        <div style="font-weight:700; margin-bottom:0.75rem;">Top 5 Défauts</div>
+        {% if top_defauts %}
+        <table class="recap-table" style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align:left; padding:0.5rem; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Défaut</th>
+                    <th style="text-align:right; padding:0.5rem; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Nombre</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in top_defauts %}
+                <tr>
+                    <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ item.defaut }}</td>
+                    <td style="padding:0.5rem; border-bottom:1px solid var(--color-border); text-align:right;">{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="color:var(--color-text-muted);">Aucune donnée disponible.</div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top:1.5rem; background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm);">
+    <div style="padding:1rem; font-weight:700; border-bottom:1px solid var(--color-border);">Tableau des défauts</div>
+    <div style="overflow:auto; max-height:480px;">
+        <table class="recap-table" style="width:100%; border-collapse:collapse; min-width:720px;">
+            <thead>
+                <tr>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Site</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Date début</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Date fin</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Durée (jours)</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Statut</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Défaut</th>
+                    <th style="padding:0.5rem; text-align:left; color:var(--color-text-muted); border-bottom:1px solid var(--color-border);">Equipement</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if rows %}
+                    {% for row in rows %}
+                    <tr>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.site }}</td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.date_debut }}</td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.date_fin }}</td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.duree }}</td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">
+                            <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+                                {% if row.statut == 'En cours' %}
+                                <span style="width:10px; height:10px; border-radius:50%; background:#ef4444;"></span>
+                                {% else %}
+                                <span style="width:10px; height:10px; border-radius:50%; background:#10b981;"></span>
+                                {% endif %}
+                                {{ row.statut }}
+                            </span>
+                        </td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.defaut }}</td>
+                        <td style="padding:0.5rem; border-bottom:1px solid var(--color-border);">{{ row.eqp }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="padding:1rem; text-align:center; color:var(--color-text-muted);">Aucun défaut trouvé pour la période sélectionnée.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
