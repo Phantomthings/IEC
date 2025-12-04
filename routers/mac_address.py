@@ -32,10 +32,23 @@ def _format_soc_evolution(s0, s1):
     return ""
 
 
-def _build_conditions(sites: str, date_debut: date | None, date_fin: date | None, table_alias: str = ""):
+def _build_conditions(
+    sites: str,
+    date_debut: date | None,
+    date_fin: date | None,
+    table_alias: str = "",
+    *,
+    error_alias: str | None = None,
+    error_types: str = "",
+    moments: str = "",
+):
     conditions = ["1=1"]
-    params = {}
+    params: dict[str, str] = {}
     prefix = f"{table_alias}." if table_alias else ""
+    error_prefix = f"{error_alias or table_alias}." if (error_alias or table_alias) else ""
+
+    def _parse_filter_values(values: str) -> list[str]:
+        return [v.strip() for v in values.split(",") if v.strip()]
 
     if date_debut:
         conditions.append(f"{prefix}`Datetime start` >= :date_debut")
@@ -51,6 +64,20 @@ def _build_conditions(sites: str, date_debut: date | None, date_fin: date | None
             for i, s in enumerate(site_list):
                 params[f"site_{i}"] = s
 
+    if error_types:
+        type_list = _parse_filter_values(error_types)
+        if type_list and error_prefix:
+            placeholders = ",".join([f":type_{i}" for i in range(len(type_list))])
+            conditions.append(f"{error_prefix}`type_erreur` IN ({placeholders})")
+            params.update({f"type_{i}": t for i, t in enumerate(type_list)})
+
+    if moments:
+        moment_list = _parse_filter_values(moments)
+        if moment_list and error_prefix:
+            placeholders = ",".join([f":moment_{i}" for i in range(len(moment_list))])
+            conditions.append(f"{error_prefix}`moment` IN ({placeholders})")
+            params.update({f"moment_{i}": m for i, m in enumerate(moment_list)})
+
     return " AND ".join(conditions), params
 
 
@@ -60,6 +87,8 @@ async def search_mac(
     sites: str = Query(default=""),
     date_debut: date = Query(default=None),
     date_fin: date = Query(default=None),
+    error_types: str = Query(default=""),
+    moments: str = Query(default=""),
     mac_query: str = Query(default=""),
 ):
     if not table_exists("kpi_charges_mac"):
@@ -85,7 +114,15 @@ async def search_mac(
     mac_norm = mac_query.strip().lower().replace("0x", "")
     mac_norm = re.sub(r"[^0-9a-f]", "", mac_norm)
 
-    where_clause, params = _build_conditions(sites, date_debut, date_fin, "c")
+    where_clause, params = _build_conditions(
+        sites,
+        date_debut,
+        date_fin,
+        "c",
+        error_alias="s",
+        error_types=error_types,
+        moments=moments,
+    )
 
     sql = f"""
         SELECT
@@ -267,6 +304,8 @@ async def search_by_codes(
     sites: str = Form(default=""),
     date_debut: str | None = Form(default=None),
     date_fin: str | None = Form(default=None),
+    error_types: str = Form(default=""),
+    moments: str = Form(default=""),
 ):
     parts = re.split(r"[,\s;]+", codes.strip())
     try:
@@ -291,7 +330,14 @@ async def search_by_codes(
     date_debut_val = _parse_date_field(date_debut)
     date_fin_val = _parse_date_field(date_fin)
 
-    where_clause, params = _build_conditions(sites, date_debut_val, date_fin_val, "s")
+    where_clause, params = _build_conditions(
+        sites,
+        date_debut_val,
+        date_fin_val,
+        "s",
+        error_types=error_types,
+        moments=moments,
+    )
 
     placeholders = ", ".join([f":code_{i}" for i in range(len(code_list))])
     code_filter = code_type if code_type in {"Erreur_EVI", "Erreur_DownStream"} else "Tous"
@@ -410,7 +456,14 @@ async def search_by_codes(
 
     occ_vehicle = []
     if vehicle_counts is not None and not vehicle_counts.empty:
-        total_where, total_params = _build_conditions(sites, date_debut_val, date_fin_val, "cs")
+        total_where, total_params = _build_conditions(
+            sites,
+            date_debut_val,
+            date_fin_val,
+            "cs",
+            error_types=error_types,
+            moments=moments,
+        )
         total_sql = f"""
             SELECT
                 cs.Vehicle,
