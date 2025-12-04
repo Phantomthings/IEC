@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Form, Query, Request
 from fastapi.templating import Jinja2Templates
 from datetime import date
 import pandas as pd
@@ -239,8 +239,137 @@ async def get_top10_unidentified(
         "partials/mac_top10.html",
         {
             "request": request,
-            "rows": rows,
-        }
+        "rows": rows,
+    }
+)
+
+
+@router.get("/mac-address/code-analysis")
+async def get_code_analysis_tab(
+    request: Request,
+    sites: str = Query(default=""),
+    date_debut: date = Query(default=None),
+    date_fin: date = Query(default=None),
+):
+    return templates.TemplateResponse(
+        "partials/code_analysis.html",
+        {
+            "request": request,
+        },
+    )
+
+
+@router.post("/mac-address/code-analysis/search")
+async def search_by_codes(
+    request: Request,
+    codes: str = Form(...),
+    code_type: str = Form(default="Tous"),
+    sites: str = Form(default=""),
+    date_debut: str | None = Form(default=None),
+    date_fin: str | None = Form(default=None),
+):
+    parts = re.split(r"[,\s;]+", codes.strip())
+    try:
+        code_list = [int(p) for p in parts if p.strip()]
+    except Exception:
+        code_list = []
+
+    if not code_list:
+        return templates.TemplateResponse(
+            "partials/code_results.html",
+            {"request": request, "error": "Aucun code valide"},
+        )
+
+    def _parse_date_field(val: str | None) -> date | None:
+        if not val:
+            return None
+        try:
+            return pd.to_datetime(val).date()
+        except Exception:
+            return None
+
+    date_debut_val = _parse_date_field(date_debut)
+    date_fin_val = _parse_date_field(date_fin)
+
+    where_clause, params = _build_conditions(sites, date_debut_val, date_fin_val, "s")
+
+    placeholders = ", ".join([f":code_{i}" for i in range(len(code_list))])
+    code_filter = code_type if code_type in {"Erreur_EVI", "Erreur_DownStream"} else "Tous"
+
+    if code_filter == "Erreur_EVI":
+        where_clause += f" AND s.`EVI Error Code` IN ({placeholders})"
+    elif code_filter == "Erreur_DownStream":
+        where_clause += f" AND s.`Downstream Code PC` IN ({placeholders})"
+    else:
+        where_clause += f" AND (s.`EVI Error Code` IN ({placeholders}) OR s.`Downstream Code PC` IN ({placeholders}))"
+
+    params.update({f"code_{i}": c for i, c in enumerate(code_list)})
+
+    sql = f"""
+        SELECT
+            s.ID,
+            s.Site,
+            s.PDC,
+            s.`Datetime start`,
+            s.`Datetime end`,
+            s.`Energy (Kwh)`,
+            s.`MAC Address`,
+            s.Vehicle,
+            s.`SOC Start`,
+            s.`SOC End`,
+            s.type_erreur,
+            s.moment,
+            s.`EVI Error Code`,
+            s.`Downstream Code PC`
+        FROM kpi_sessions s
+        WHERE s.is_ok = 0 AND {where_clause}
+    """
+
+    df = query_df(sql, params)
+
+    if df.empty:
+        return templates.TemplateResponse(
+            "partials/code_results.html",
+            {"request": request, "error": "Aucune charge en erreur trouvée"},
+        )
+
+    df["Datetime start"] = pd.to_datetime(df["Datetime start"], errors="coerce")
+    df["Datetime end"] = pd.to_datetime(df["Datetime end"], errors="coerce")
+    df["MAC Address"] = df["MAC Address"].apply(_fmt_mac)
+
+    df["Évolution SOC"] = df.apply(
+        lambda r: _format_soc_evolution(r.get("SOC Start"), r.get("SOC End")), axis=1
+    )
+    df["Erreur"] = df.apply(
+        lambda r: f"{r['type_erreur']} — {r['moment']}"
+        if pd.notna(r.get("moment")) and str(r.get("moment")).strip()
+        else (r.get("type_erreur") or ""),
+        axis=1,
+    )
+
+    if "Energy (Kwh)" in df.columns:
+        df["Energy (Kwh)"] = pd.to_numeric(df["Energy (Kwh)"], errors="coerce")
+
+    df = df.sort_values("Datetime start", ascending=False)
+
+    occ_site_pdc = (
+        df.groupby(["Site", "PDC"])
+        .size()
+        .reset_index(name="Occurrences")
+        .sort_values("Occurrences", ascending=False)
+    )
+
+    charges_rows = df.to_dict("records")
+
+    return templates.TemplateResponse(
+        "partials/code_results.html",
+        {
+            "request": request,
+            "codes_str": ", ".join(str(c) for c in code_list),
+            "charges": charges_rows,
+            "occ_site_pdc": occ_site_pdc.to_dict("records"),
+            "base_url": BASE_CHARGE_URL,
+        },
     )
 
 

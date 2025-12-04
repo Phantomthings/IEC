@@ -1,0 +1,147 @@
+{% if error %}
+<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fca5a5; border-radius: var(--radius); color: #dc2626;">
+    {{ error }}
+</div>
+{% else %}
+
+<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #fbbf24; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
+    <div style="font-size: 1rem; font-weight: 700; color: #78350f;">
+        Codes analysés: {{ codes_str }}
+    </div>
+    <div style="font-size: 0.85rem; color: #92400e; margin-top: 0.25rem;">
+        {{ charges|length }} charges en erreur trouvées
+    </div>
+</div>
+
+<div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
+    <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--color-text);">
+        Charges en Erreur
+    </h3>
+    <div class="mac-table-container">
+        <table class="mac-table" id="error-charges-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-type="number" style="width: 60px;">N°</th>
+                    <th class="sortable">Site</th>
+                    <th class="sortable" data-type="number">PDC</th>
+                    <th class="sortable">Début</th>
+                    <th class="sortable">Fin</th>
+                    <th class="sortable">MAC</th>
+                    <th class="sortable">Véhicule</th>
+                    <th class="sortable">Erreur</th>
+                    <th class="sortable">SOC</th>
+                    <th class="sortable" data-type="number">Énergie (kWh)</th>
+                    <th style="width: 80px;">Lien</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for charge in charges %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ charge.Site }}</td>
+                    <td>{{ charge.PDC }}</td>
+                    <td>{{ charge['Datetime start'].strftime('%Y-%m-%d %H:%M') if charge['Datetime start'] else '—' }}</td>
+                    <td>{{ charge['Datetime end'].strftime('%Y-%m-%d %H:%M') if charge['Datetime end'] else '—' }}</td>
+                    <td class="mac-code">{{ charge['MAC Address'] }}</td>
+                    <td>{{ charge.Vehicle or '—' }}</td>
+                    <td style="color: #dc2626; font-weight: 500;">{{ charge.Erreur }}</td>
+                    <td>{{ charge['Évolution SOC'] or '—' }}</td>
+                    <td style="text-align: right;" data-sort-value="{{ charge['Energy (Kwh)'] or 0 }}">
+                        {% if charge['Energy (Kwh)'] %}{{ "%.3f"|format(charge['Energy (Kwh)']) }}{% else %}—{% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <a href="{{ base_url }}{{ charge.ID }}" target="_blank" class="mac-link">Ouvrir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.5rem;">
+    <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--color-text);">
+        Occurrences par Site et PDC
+    </h3>
+    <div class="mac-table-container" style="max-height: 400px;">
+        <table class="mac-table" id="occ-table">
+            <thead>
+                <tr>
+                    <th class="sortable">Site</th>
+                    <th class="sortable" data-type="number">PDC</th>
+                    <th class="sortable" data-type="number">Occurrences</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in occ_site_pdc %}
+                <tr>
+                    <td>{{ row.Site }}</td>
+                    <td>{{ row.PDC }}</td>
+                    <td class="mac-number" data-sort-value="{{ row.Occurrences }}">
+                        {{ row.Occurrences }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function() {
+    function initSorting(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        
+        var headers = table.querySelectorAll('th.sortable');
+        var tbody = table.querySelector('tbody');
+        var currentSort = { col: null, dir: 'asc' };
+
+        function parseValue(text, type) {
+            var cleaned = (text || '').toString().replace(/\s+/g, '').replace('%', '');
+            if (type === 'number') {
+                return parseFloat(cleaned) || 0;
+            }
+            return cleaned.toLowerCase();
+        }
+
+        function sortTable(colIndex, type) {
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            var dir = currentSort.col === colIndex && currentSort.dir === 'asc' ? 'desc' : 'asc';
+            var mult = dir === 'asc' ? 1 : -1;
+
+            rows.sort(function(a, b) {
+                var aVal = parseValue(
+                    a.children[colIndex].dataset.sortValue || a.children[colIndex].textContent.trim(),
+                    type
+                );
+                var bVal = parseValue(
+                    b.children[colIndex].dataset.sortValue || b.children[colIndex].textContent.trim(),
+                    type
+                );
+                return aVal < bVal ? -mult : aVal > bVal ? mult : 0;
+            });
+
+            rows.forEach(function(row) { tbody.appendChild(row); });
+
+            headers.forEach(function(h) {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            headers[colIndex].classList.add('sorted-' + dir);
+
+            currentSort = { col: colIndex, dir: dir };
+        }
+
+        headers.forEach(function(th, index) {
+            th.addEventListener('click', function() {
+                sortTable(index, th.dataset.type || 'text');
+            });
+        });
+    }
+
+    initSorting('error-charges-table');
+    initSorting('occ-table');
+})();
+</script>
+
+{% endif %}
