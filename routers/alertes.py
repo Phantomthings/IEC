@@ -20,6 +20,8 @@ async def get_alertes(
     sites: str = Query(default=""),
     date_debut: date = Query(default=None),
     date_fin: date = Query(default=None),
+    error_types: str = Query(default=""),
+    moments: str = Query(default=""),
 ):
     """
     Retourne le fragment HTML des alertes actives
@@ -39,10 +41,10 @@ async def get_alertes(
     """
     
     df = query_df(sql)
-    
+
     if not df.empty:
         df["detection"] = pd.to_datetime(df["detection"], errors="coerce")
-        
+
         # Filtrer par dates
         if date_debut:
             df = df[df["detection"] >= pd.Timestamp(date_debut)]
@@ -54,7 +56,23 @@ async def get_alertes(
             site_list = [s.strip() for s in sites.split(",") if s.strip()]
             if site_list:
                 df = df[df["Site"].isin(site_list)]
-    
+
+        # Filtrer par type d'erreur
+        if error_types and "type_erreur" in df.columns:
+            type_list = [t.strip() for t in error_types.split(",") if t.strip()]
+            if type_list:
+                df = df[df["type_erreur"].isin(type_list)]
+
+        # Filtrer par moment
+        if moments and "moment" in df.columns:
+            moment_list = [m.strip() for m in moments.split(",") if m.strip()]
+            if moment_list:
+                df = df[df["moment"].isin(moment_list)]
+
+        # Trier par date de détection (plus récentes en premier)
+        if "detection" in df.columns:
+            df = df.dropna(subset=["detection"]).sort_values("detection", ascending=False)
+
     nb_alertes = len(df)
     
     if nb_alertes > 10:
@@ -69,7 +87,37 @@ async def get_alertes(
     if not df.empty:
         top = df.groupby("Site").size().sort_values(ascending=False).head(5)
         top_sites = [{"site": site, "count": count} for site, count in top.items()]
-    
+
+    rows = []
+    if not df.empty:
+        for _, row in df.iterrows():
+            detection_value = row.get("detection")
+            if pd.notna(detection_value):
+                detection_value = pd.to_datetime(detection_value, errors="coerce")
+                detection_value = (
+                    detection_value.strftime("%Y-%m-%d %H:%M")
+                    if not pd.isna(detection_value)
+                    else ""
+                )
+            else:
+                detection_value = ""
+
+            occurrences_val = pd.to_numeric(row.get("occurrences_12h", 0), errors="coerce")
+            occurrences = int(occurrences_val) if pd.notna(occurrences_val) else 0
+
+            rows.append(
+                {
+                    "site": row.get("Site", ""),
+                    "pdc": row.get("PDC", ""),
+                    "type": row.get("type_erreur", ""),
+                    "detection": detection_value,
+                    "occurrences": occurrences,
+                    "moment": row.get("moment", ""),
+                    "evi_code": row.get("evi_code", ""),
+                    "downstream_code_pc": row.get("downstream_code_pc", ""),
+                }
+            )
+
     return templates.TemplateResponse(
         "partials/alertes.html",
         {
@@ -77,5 +125,6 @@ async def get_alertes(
             "nb_alertes": nb_alertes,
             "status": status,
             "top_sites": top_sites,
+            "rows": rows,
         }
     )
