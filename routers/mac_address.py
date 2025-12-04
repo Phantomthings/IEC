@@ -359,6 +359,62 @@ async def search_by_codes(
         .sort_values("Occurrences", ascending=False)
     )
 
+    vehicle_counts = None
+    if "Vehicle" in df.columns:
+        vehicle_series = df["Vehicle"].astype(str).str.strip()
+        vehicle_series = vehicle_series.replace(
+            {"": np.nan, "nan": np.nan, "none": np.nan, "NULL": np.nan}, regex=False
+        )
+        vehicle_df = df.copy()
+        vehicle_df["Vehicle"] = vehicle_series
+        vehicle_df = vehicle_df[vehicle_df["Vehicle"].notna()]
+        vehicle_df = vehicle_df[vehicle_df["Vehicle"].str.len().gt(0)]
+        vehicle_df = vehicle_df[vehicle_df["Vehicle"].str.lower() != "unknown"]
+
+        if not vehicle_df.empty:
+            vehicle_counts = (
+                vehicle_df.groupby("Vehicle")
+                .size()
+                .reset_index(name="Occurrences")
+            )
+
+    occ_vehicle = []
+    if vehicle_counts is not None and not vehicle_counts.empty:
+        total_where, total_params = _build_conditions(sites, date_debut_val, date_fin_val, "cs")
+        total_sql = f"""
+            SELECT
+                cs.Vehicle,
+                COUNT(*) AS total_charges
+            FROM kpi_sessions cs
+            WHERE {total_where}
+            GROUP BY cs.Vehicle
+        """
+
+        vehicle_totals = query_df(total_sql, total_params)
+
+        if not vehicle_totals.empty:
+            vehicle_totals["Vehicle"] = vehicle_totals["Vehicle"].astype(str).str.strip()
+            vehicle_totals = vehicle_totals[vehicle_totals["Vehicle"].str.len().gt(0)]
+            vehicle_totals = vehicle_totals[vehicle_totals["Vehicle"].str.lower() != "unknown"]
+
+        merged_vehicle = vehicle_counts.merge(
+            vehicle_totals, how="left", on="Vehicle"
+        ) if vehicle_totals is not None else vehicle_counts
+
+        merged_vehicle["total_charges"] = merged_vehicle["total_charges"].fillna(0).astype(int)
+        merged_vehicle["vehicle_label"] = merged_vehicle.apply(
+            lambda r: f"{r['Vehicle']} ({r['total_charges']})" if r.get("total_charges") else str(r["Vehicle"]),
+            axis=1,
+        )
+        merged_vehicle = merged_vehicle.sort_values("Occurrences", ascending=True)
+
+        max_occ = merged_vehicle["Occurrences"].max()
+        merged_vehicle["occ_pct"] = (
+            merged_vehicle["Occurrences"] / max_occ * 100 if max_occ else 0
+        )
+
+        occ_vehicle = merged_vehicle.to_dict("records")
+
     charges_rows = df.to_dict("records")
 
     return templates.TemplateResponse(
@@ -368,6 +424,7 @@ async def search_by_codes(
             "codes_str": ", ".join(str(c) for c in code_list),
             "charges": charges_rows,
             "occ_site_pdc": occ_site_pdc.to_dict("records"),
+            "occ_vehicle": occ_vehicle,
             "base_url": BASE_CHARGE_URL,
         },
     )
