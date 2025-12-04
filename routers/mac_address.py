@@ -359,6 +359,36 @@ async def search_by_codes(
         .sort_values("Occurrences", ascending=False)
     )
 
+    monthly_hist = []
+    if {"Datetime start", "Site"}.issubset(df.columns):
+        monthly_df = df.dropna(subset=["Datetime start", "Site"]).copy()
+        monthly_df["month"] = monthly_df["Datetime start"].dt.to_period("M").astype(str)
+
+        monthly_counts = (
+            monthly_df.groupby(["month", "Site"])
+            .size()
+            .reset_index(name="Occurrences")
+            .sort_values(["month", "Site"])
+        )
+
+        if not monthly_counts.empty:
+            max_occ = monthly_counts["Occurrences"].max()
+
+            for month, group in monthly_counts.groupby("month"):
+                monthly_hist.append(
+                    {
+                        "month": month,
+                        "sites": [
+                            {
+                                "Site": row["Site"],
+                                "Occurrences": int(row["Occurrences"]),
+                                "occ_pct": (row["Occurrences"] / max_occ * 100) if max_occ else 0,
+                            }
+                            for _, row in group.iterrows()
+                        ],
+                    }
+                )
+
     vehicle_counts = None
     if "Vehicle" in df.columns:
         vehicle_series = df["Vehicle"].astype(str).str.strip()
@@ -425,6 +455,7 @@ async def search_by_codes(
             "charges": charges_rows,
             "occ_site_pdc": occ_site_pdc.to_dict("records"),
             "occ_vehicle": occ_vehicle,
+            "monthly_hist": monthly_hist,
             "base_url": BASE_CHARGE_URL,
         },
     )
