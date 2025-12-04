@@ -1,0 +1,175 @@
+<!-- Fragment: Evolution mensuelle du taux de réussite -->
+<div class="tab-section">
+    <style>
+        .evo-wrapper {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        .evo-card {
+            background: #0f172a;
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            padding: 14px 16px;
+            color: #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0,0,0,.15);
+        }
+        .evo-card h4 {
+            margin: 0 0 0.35rem 0;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+        }
+        .evo-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        .evo-sub {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        .evo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            border: 1px solid #334155;
+            background: #111827;
+            color: #c7d2fe;
+        }
+        .evo-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .evo-table th,
+        .evo-table td {
+            padding: 0.65rem 0.75rem;
+            text-align: left;
+        }
+        .evo-table th {
+            background: #0f172a;
+            color: #cbd5e1;
+            border-bottom: 1px solid #1f2937;
+        }
+        .evo-table tr:nth-child(even) td {
+            background: #0b1220;
+        }
+        .evo-table tr:nth-child(odd) td {
+            background: #0c1424;
+        }
+        .evo-alert {
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #334155;
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+        .evo-empty {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: #f8fafc;
+            color: #334155;
+            border: 1px dashed #cbd5e1;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+        }
+    </style>
+
+    <h3 style="margin-bottom: 0.75rem;">📈 Évolution mensuelle du taux de réussite global (erreurs de fin de charge exclues)</h3>
+
+    {% if error_message %}
+        <div class="evo-alert">⚠️ {{ error_message }}</div>
+    {% elif no_data %}
+        <div class="evo-empty">ℹ️ Aucune donnée disponible dans `kpi_evo`.</div>
+    {% else %}
+        <div class="evo-wrapper">
+            <div class="evo-card">
+                <h4>Dernier mois</h4>
+                <div class="evo-value" style="color:#22d3ee;">{{ latest_rate }}%</div>
+                <div class="evo-sub">{{ rows[-1]['mois_affiche'] if rows else '' }}</div>
+            </div>
+            <div class="evo-card">
+                <h4>Tendance vs mois précédent</h4>
+                {% if variation is not none and previous_rate is not none %}
+                    {% if variation >= 0 %}
+                        <div class="evo-badge">⬆️ +{{ variation|round(1) }} pts</div>
+                        <div class="evo-sub">Précédent : {{ previous_rate }}%</div>
+                    {% else %}
+                        <div class="evo-badge" style="color:#fecdd3;">⬇️ {{ variation|round(1) }} pts</div>
+                        <div class="evo-sub">Précédent : {{ previous_rate }}%</div>
+                    {% endif %}
+                {% else %}
+                    <div class="evo-sub">Pas assez d'historique pour le calcul.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="border:1px solid #e2e8f0; border-radius: 16px; padding: 1rem; background: #fff;">
+            <div id="evo-chart" style="height: 380px;"></div>
+            <table class="evo-table">
+                <thead>
+                    <tr>
+                        <th>Mois</th>
+                        <th>Taux de réussite (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.mois_affiche }}</td>
+                        <td>{{ row.taux_pct }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <script>
+            (function() {
+                var months = {{ chart_data.months | tojson }};
+                var values = {{ chart_data.values | tojson }};
+
+                var trace = {
+                    type: 'bar',
+                    x: months,
+                    y: values,
+                    text: values.map(function(v) { return v.toFixed(1) + '%'; }),
+                    textposition: 'outside',
+                    marker: {
+                        color: '#38bdf8'
+                    }
+                };
+
+                var layout = {
+                    margin: { t: 10, l: 50, r: 20, b: 50 },
+                    xaxis: { title: 'Mois' },
+                    yaxis: {
+                        title: 'Taux de réussite (%)',
+                        rangemode: 'tozero'
+                    },
+                    bargap: 0.3,
+                    plot_bgcolor: '#fff',
+                    paper_bgcolor: '#fff'
+                };
+
+                var config = {
+                    responsive: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d']
+                };
+
+                Plotly.newPlot('evo-chart', [trace], layout, config);
+            })();
+        </script>
+    {% endif %}
+</div>
