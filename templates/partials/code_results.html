@@ -127,6 +127,44 @@
     </div>
 </div>
 
+<div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.5rem; display:flex; flex-direction:column; gap:1rem;">
+    <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--color-text);">
+        Zoom site / mois / jour
+    </h3>
+
+    {% if daily_counts and daily_counts|length > 0 %}
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+        <label style="font-weight:600; color:var(--color-text); display:flex; align-items:center; gap:0.4rem;">
+            Site
+            <select id="code-site-select" class="code-select" style="min-width:180px;"></select>
+        </label>
+        <label style="font-weight:600; color:var(--color-text); display:flex; align-items:center; gap:0.4rem;">
+            Mois
+            <select id="code-month-select" class="code-select" style="min-width:140px;"></select>
+        </label>
+        <label style="font-weight:600; color:var(--color-text); display:flex; align-items:center; gap:0.4rem;">
+            Jour
+            <select id="code-day-select" class="code-select" style="min-width:160px;"></select>
+        </label>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
+        <div style="border:1px solid var(--color-border); border-radius:var(--radius); padding:0.75rem; background:var(--color-bg);">
+            <div style="font-weight:600; color:var(--color-text); margin-bottom:0.5rem;">Occurrences par jour et PDC</div>
+            <div id="code-daily-chart" style="width:100%; height:360px;"></div>
+        </div>
+        <div style="border:1px solid var(--color-border); border-radius:var(--radius); padding:0.75rem; background:var(--color-bg);">
+            <div style="font-weight:600; color:var(--color-text); margin-bottom:0.5rem;">Occurrences par heure et PDC</div>
+            <div id="code-hourly-chart" style="width:100%; height:360px;"></div>
+        </div>
+    </div>
+    {% else %}
+    <div style="padding: 0.75rem 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius); color: #64748b;">
+        Pas assez de données pour afficher les zooms par site.
+    </div>
+    {% endif %}
+</div>
+
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
 (function() {
@@ -199,7 +237,174 @@
     
     Plotly.newPlot('monthly-chart', tracesList, layout, config);
     {% endif %}
-    
+
+    const siteOptions = {{ site_options|tojson }};
+    const dailyCounts = {{ daily_counts|tojson }};
+    const hourlyCounts = {{ hourly_counts|tojson }};
+
+    const siteSelect = document.getElementById('code-site-select');
+    const monthSelect = document.getElementById('code-month-select');
+    const daySelect = document.getElementById('code-day-select');
+    const dailyChart = document.getElementById('code-daily-chart');
+    const hourlyChart = document.getElementById('code-hourly-chart');
+
+    let currentSite = null;
+    let currentMonth = null;
+    let currentDay = null;
+
+    const palette = [
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+        '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#ef4444', '#22c55e'
+    ];
+
+    function getMonthsForSite(site) {
+        const months = new Set();
+        dailyCounts.forEach(row => {
+            if (row.Site === site) months.add(row.month);
+        });
+        return Array.from(months).sort();
+    }
+
+    function getDaysForSiteMonth(site, month) {
+        const days = new Set();
+        dailyCounts.forEach(row => {
+            if (row.Site === site && row.month === month) days.add(row.day);
+        });
+        return Array.from(days).sort();
+    }
+
+    function getAllDaysInMonth(monthStr) {
+        const [y, m] = monthStr.split('-').map(Number);
+        const dt = new Date(y, m - 1, 1);
+        const days = [];
+        while (dt.getMonth() === m - 1) {
+            days.push(dt.toISOString().slice(0, 10));
+            dt.setDate(dt.getDate() + 1);
+        }
+        return days;
+    }
+
+    function renderDailyChart() {
+        if (!dailyChart || !currentSite || !currentMonth) return;
+        const monthDays = getAllDaysInMonth(currentMonth);
+
+        const filtered = dailyCounts.filter(
+            row => row.Site === currentSite && row.month === currentMonth
+        );
+
+        const pdcSet = new Set(filtered.map(r => r.PDC));
+        const dayPdcMap = {};
+
+        filtered.forEach(row => {
+            const key = row.day;
+            if (!dayPdcMap[key]) dayPdcMap[key] = {};
+            dayPdcMap[key][row.PDC] = row.Occurrences;
+        });
+
+        const traces = [];
+        Array.from(pdcSet).sort().forEach((pdc, idx) => {
+            traces.push({
+                x: monthDays,
+                y: monthDays.map(d => (dayPdcMap[d] && dayPdcMap[d][pdc]) || 0),
+                name: String(pdc),
+                type: 'bar',
+                marker: { color: palette[idx % palette.length] }
+            });
+        });
+
+        const layout = {
+            barmode: 'group',
+            bargap: 0.15,
+            xaxis: { title: 'Jour', tickangle: -45 },
+            yaxis: { title: 'Occurrences' },
+            showlegend: true,
+            margin: { t: 10, r: 10, b: 80, l: 50 }
+        };
+
+        Plotly.newPlot(dailyChart, traces, layout, { displayModeBar: false, responsive: true });
+    }
+
+    function renderHourlyChart() {
+        if (!hourlyChart || !currentSite || !currentDay) return;
+        const hours = Array.from({ length: 24 }, (_, i) => i);
+
+        const filtered = hourlyCounts.filter(
+            row => row.Site === currentSite && row.day === currentDay
+        );
+
+        const pdcSet = new Set(filtered.map(r => r.PDC));
+        const hourPdcMap = {};
+
+        filtered.forEach(row => {
+            const key = row.hour;
+            if (!hourPdcMap[key]) hourPdcMap[key] = {};
+            hourPdcMap[key][row.PDC] = row.Occurrences;
+        });
+
+        const traces = [];
+        Array.from(pdcSet).sort().forEach((pdc, idx) => {
+            traces.push({
+                x: hours,
+                y: hours.map(h => (hourPdcMap[h] && hourPdcMap[h][pdc]) || 0),
+                name: String(pdc),
+                type: 'bar',
+                marker: { color: palette[idx % palette.length] }
+            });
+        });
+
+        const layout = {
+            barmode: 'group',
+            bargap: 0.2,
+            xaxis: { title: 'Heure', dtick: 1 },
+            yaxis: { title: 'Occurrences' },
+            showlegend: true,
+            margin: { t: 10, r: 10, b: 50, l: 50 }
+        };
+
+        Plotly.newPlot(hourlyChart, traces, layout, { displayModeBar: false, responsive: true });
+    }
+
+    function initSiteMonthDaySelectors() {
+        if (!siteSelect || !monthSelect || !daySelect || !siteOptions.length) return;
+
+        siteSelect.innerHTML = siteOptions.map(s => `<option value="${s}">${s}</option>`).join('');
+        currentSite = siteOptions[0];
+
+        function refreshMonths() {
+            const months = getMonthsForSite(currentSite);
+            monthSelect.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+            currentMonth = months[months.length - 1] || null;
+            if (currentMonth) monthSelect.value = currentMonth;
+            refreshDays();
+        }
+
+        function refreshDays() {
+            const days = currentSite && currentMonth ? getDaysForSiteMonth(currentSite, currentMonth) : [];
+            daySelect.innerHTML = days.map(d => `<option value="${d}">${d}</option>`).join('');
+            currentDay = days[days.length - 1] || null;
+            if (currentDay) daySelect.value = currentDay;
+            renderDailyChart();
+            renderHourlyChart();
+        }
+
+        siteSelect.addEventListener('change', () => {
+            currentSite = siteSelect.value;
+            refreshMonths();
+        });
+
+        monthSelect.addEventListener('change', () => {
+            currentMonth = monthSelect.value;
+            refreshDays();
+        });
+
+        daySelect.addEventListener('change', () => {
+            currentDay = daySelect.value;
+            renderHourlyChart();
+        });
+
+        refreshMonths();
+    }
+
     function initSorting(tableId) {
         var table = document.getElementById(tableId);
         if (!table) return;
@@ -252,6 +457,7 @@
 
     initSorting('error-charges-table');
     initSorting('occ-table');
+    initSiteMonthDaySelectors();
 })();
 </script>
 

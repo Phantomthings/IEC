@@ -443,7 +443,25 @@ async def search_by_codes(
             merged_vehicle["Occurrences"] / max_occ * 100 if max_occ else 0
         )
 
-        occ_vehicle = merged_vehicle.to_dict("records")
+            occ_vehicle = merged_vehicle.to_dict("records")
+
+    df["month"] = df["Datetime start"].dt.to_period("M").astype(str)
+    df["day"] = df["Datetime start"].dt.date.astype(str)
+    df["hour"] = df["Datetime start"].dt.hour
+
+    site_options = sorted(df["Site"].dropna().unique().tolist())
+
+    daily_counts = (
+        df.groupby(["Site", "month", "day", "PDC"])
+        .size()
+        .reset_index(name="Occurrences")
+    )
+
+    hourly_counts = (
+        df.groupby(["Site", "day", "hour", "PDC"])
+        .size()
+        .reset_index(name="Occurrences")
+    )
 
     charges_rows = df.to_dict("records")
 
@@ -457,6 +475,9 @@ async def search_by_codes(
             "occ_vehicle": occ_vehicle,
             "monthly_hist": monthly_hist,
             "base_url": BASE_CHARGE_URL,
+            "site_options": site_options,
+            "daily_counts": daily_counts.to_dict("records"),
+            "hourly_counts": hourly_counts.to_dict("records"),
         },
     )
 
