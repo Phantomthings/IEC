@@ -95,6 +95,14 @@
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 500;
+            cursor: pointer;
+        }
+
+        .tag.inactive {
+            background: #e2e8f0;
+            color: #475569;
+            border-color: #cbd5e1;
+            opacity: 0.85;
         }
         
         .tag-remove {
@@ -704,25 +712,36 @@
         }
         
         function renderErrorTypes() {
-            document.getElementById('error-type-tags').innerHTML = state.selectedErrorTypes.map(t => 
-                `<span class="tag">${t.length > 18 ? t.slice(0,18)+'...' : t} <button class="tag-remove" onclick="removeErrorType('${t}')">×</button></span>`
-            ).join('');
+            document.getElementById('error-type-tags').innerHTML = state.errorTypes.map(t => {
+                const isSelected = state.selectedErrorTypes.includes(t);
+                const label = t.length > 18 ? t.slice(0, 18) + '...' : t;
+                return `<span class="tag ${isSelected ? '' : 'inactive'}" onclick="toggleErrorType('${t}')">${label} <button class="tag-remove" onclick="event.stopPropagation(); toggleErrorType('${t}')">${isSelected ? '×' : '+'}</button></span>`;
+            }).join('');
         }
-        
-        function removeErrorType(type) {
-            state.selectedErrorTypes = state.selectedErrorTypes.filter(t => t !== type);
+
+        function toggleErrorType(type) {
+            if (state.selectedErrorTypes.includes(type)) {
+                state.selectedErrorTypes = state.selectedErrorTypes.filter(t => t !== type);
+            } else {
+                state.selectedErrorTypes = [...state.selectedErrorTypes, type];
+            }
             renderErrorTypes();
             refreshTab();
         }
-        
+
         function renderMoments() {
-            document.getElementById('moment-tags').innerHTML = state.selectedMoments.map(m => 
-                `<span class="tag">${m} <button class="tag-remove" onclick="removeMoment('${m}')">×</button></span>`
-            ).join('');
+            document.getElementById('moment-tags').innerHTML = state.moments.map(m => {
+                const isSelected = state.selectedMoments.includes(m);
+                return `<span class="tag ${isSelected ? '' : 'inactive'}" onclick="toggleMoment('${m}')">${m} <button class="tag-remove" onclick="event.stopPropagation(); toggleMoment('${m}')">${isSelected ? '×' : '+'}</button></span>`;
+            }).join('');
         }
-        
-        function removeMoment(moment) {
-            state.selectedMoments = state.selectedMoments.filter(m => m !== moment);
+
+        function toggleMoment(moment) {
+            if (state.selectedMoments.includes(moment)) {
+                state.selectedMoments = state.selectedMoments.filter(m => m !== moment);
+            } else {
+                state.selectedMoments = [...state.selectedMoments, moment];
+            }
             renderMoments();
             updateToggles();
             refreshTab();
