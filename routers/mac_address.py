@@ -443,7 +443,7 @@ async def search_by_codes(
             merged_vehicle["Occurrences"] / max_occ * 100 if max_occ else 0
         )
 
-            occ_vehicle = merged_vehicle.to_dict("records")
+        occ_vehicle = merged_vehicle.to_dict("records")
 
     df["month"] = df["Datetime start"].dt.to_period("M").astype(str)
     df["day"] = df["Datetime start"].dt.date.astype(str)
