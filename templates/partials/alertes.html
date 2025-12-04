@@ -1,28 +1,14 @@
 <div class="panel">
     <div class="panel-header">
         <div>
-            <div class="panel-title">Top 5 Sites en Alerte</div>
-            <div class="panel-subtitle">Classement des sites présentant des alertes actives sur la période sélectionnée</div>
+            <div class="panel-title">Erreurs récurrentes</div>
+            <div class="panel-subtitle">Analyse des sites présentant des erreurs récurrentes sur la période sélectionnée</div>
         </div>
         <div class="kpi-card {{ status }}">
             <p class="kpi-value">{{ nb_alertes }}</p>
             <p class="kpi-label">alertes détectées</p>
         </div>
     </div>
-
-    {% if top_sites %}
-    <div class="top-sites">
-        <div class="top-title">Top 5 Sites en Alerte</div>
-        <div class="top-sites-list">
-            {% for item in top_sites %}
-            <div class="top-item">
-                <span class="top-site">{{ item.site }}</span>
-                <span class="top-count">{{ item.count }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
     {% if rows %}
     <div class="table-wrapper-alertes">
@@ -89,40 +75,6 @@
     .panel-subtitle {
         color: var(--color-text-muted);
         font-size: 0.9rem;
-    }
-    .top-sites {
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem;
-    }
-    .top-title {
-        font-size: 0.9rem;
-        color: var(--color-text-muted);
-        margin-bottom: 0.5rem;
-    }
-    .top-sites-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.45rem;
-    }
-    .top-item {
-        display: flex;
-        justify-content: space-between;
-        padding-bottom: 0.35rem;
-        border-bottom: 1px solid var(--color-border);
-    }
-    .top-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-    .top-site {
-        font-weight: 600;
-        color: var(--color-text);
-    }
-    .top-count {
-        color: #ef4444;
-        font-weight: 700;
     }
     .table-wrapper-alertes {
         overflow: auto;
