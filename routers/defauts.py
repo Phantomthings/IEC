@@ -92,6 +92,117 @@ async def get_defauts_actifs(
             "nb_sites": nb_sites,
             "status": status,
             "sites_recent": sites_recent,
-            "defauts_par_site": defauts_par_site,
-        }
+        "defauts_par_site": defauts_par_site,
+    }
+    )
+
+
+@router.get("/defauts-historique")
+async def get_defauts_historique(
+    request: Request,
+    sites: str = Query(default="", description="Sites séparés par virgule"),
+    date_debut: str | None = Query(default=None, description="Date de début (YYYY-MM-DD)"),
+    date_fin: str | None = Query(default=None, description="Date de fin (YYYY-MM-DD)"),
+):
+    """Retourne l'historique des défauts filtré par période et par site."""
+
+    # Gestion de la période
+    params: dict[str, object] = {}
+    where_clauses: list[str] = []
+
+    if date_debut and date_fin:
+        start_date = pd.to_datetime(date_debut, errors="coerce")
+        end_date = pd.to_datetime(date_fin, errors="coerce")
+
+        if not pd.isna(start_date) and not pd.isna(end_date):
+            d1 = start_date.normalize()
+            d2 = (end_date + pd.Timedelta(days=1)).normalize()
+            params["d1"] = d1
+            params["d2"] = d2
+            where_clauses.append(
+                "((date_debut >= :d1 AND date_debut < :d2) "
+                "OR (date_fin >= :d1 AND date_fin < :d2) "
+                "OR (date_debut <= :d1 AND (date_fin >= :d2 OR date_fin IS NULL)))"
+            )
+
+    sql = """
+        SELECT
+            site,
+            date_debut,
+            date_fin,
+            defaut,
+            eqp
+        FROM kpi_defauts_log
+    """
+
+    if where_clauses:
+        sql += " WHERE " + " AND ".join(where_clauses)
+
+    sql += " ORDER BY date_debut DESC"
+
+    df = query_df(sql, params=params)
+
+    # Filtre par site
+    if sites:
+        site_list = [s.strip() for s in sites.split(",") if s.strip()]
+        if site_list:
+            df = df[df["site"].isin(site_list)]
+
+    if not df.empty:
+        df["date_debut"] = pd.to_datetime(df["date_debut"], errors="coerce")
+        df["date_fin"] = pd.to_datetime(df["date_fin"], errors="coerce")
+        now = pd.Timestamp.now()
+        df["duree_jours"] = ((df["date_fin"].fillna(now)) - df["date_debut"]).dt.days
+        df["statut"] = df["date_fin"].apply(lambda x: "En cours" if pd.isna(x) else "Résolu")
+
+    nb_total = len(df)
+    if not df.empty and "statut" in df.columns:
+        nb_en_cours = int((df["statut"] == "En cours").sum())
+        nb_resolus = int((df["statut"] == "Résolu").sum())
+    else:
+        nb_en_cours = 0
+        nb_resolus = 0
+
+    duree_moyenne = df["duree_jours"].mean() if not df.empty else 0
+
+    # Préparation des données pour l'affichage
+    rows = []
+    if not df.empty:
+        df_sorted = df.sort_values(by="date_debut", ascending=False)
+        for _, row in df_sorted.iterrows():
+            rows.append(
+                {
+                    "site": row.get("site") or "—",
+                    "date_debut": row["date_debut"].strftime("%Y-%m-%d %H:%M") if pd.notna(row["date_debut"]) else "-",
+                    "date_fin": row["date_fin"].strftime("%Y-%m-%d %H:%M") if pd.notna(row["date_fin"]) else "En cours",
+                    "duree": int(row.get("duree_jours", 0)),
+                    "statut": row.get("statut", "-"),
+                    "defaut": row.get("defaut") or "-",
+                    "eqp": row.get("eqp") or "-",
+                }
+            )
+
+    top_equipements = []
+    top_defauts = []
+    if not df.empty:
+        top_equipements = [
+            {"eqp": eqp, "count": int(count)} for eqp, count in df["eqp"].value_counts().head(5).items()
+        ]
+        top_defauts = [
+            {"defaut": defaut, "count": int(count)}
+            for defaut, count in df["defaut"].value_counts().head(5).items()
+        ]
+
+    return templates.TemplateResponse(
+        "partials/defauts_historique.html",
+        {
+            "request": request,
+            "rows": rows,
+            "nb_total": nb_total,
+            "nb_en_cours": nb_en_cours,
+            "nb_resolus": nb_resolus,
+            "duree_moyenne": round(duree_moyenne, 1) if duree_moyenne else 0,
+            "top_equipements": top_equipements,
+            "top_defauts": top_defauts,
+        },
     )
