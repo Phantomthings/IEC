@@ -91,7 +91,8 @@
         Histogramme mensuel des occurrences par site
     </h3>
     {% if monthly_hist and monthly_hist|length > 0 %}
-    <div id="monthly-chart" style="width: 100%; height: 500px;"></div>
+    <div id="monthly-chart" style="display: flex; flex-direction: column; gap: 0.85rem;"></div>
+    <div id="monthly-legend" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>
     {% else %}
     <div style="padding: 0.75rem 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius); color: #64748b;">
         Pas de données mensuelles pour ces filtres.
@@ -151,11 +152,11 @@
     <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
         <div style="border:1px solid var(--color-border); border-radius:var(--radius); padding:0.75rem; background:var(--color-bg);">
             <div style="font-weight:600; color:var(--color-text); margin-bottom:0.5rem;">Occurrences par jour et PDC</div>
-            <div id="code-daily-chart" style="width:100%; height:360px;"></div>
+            <div id="code-daily-chart" style="width:100%; display:flex; flex-direction:column; gap:0.65rem;"></div>
         </div>
         <div style="border:1px solid var(--color-border); border-radius:var(--radius); padding:0.75rem; background:var(--color-bg);">
             <div style="font-weight:600; color:var(--color-text); margin-bottom:0.5rem;">Occurrences par heure et PDC</div>
-            <div id="code-hourly-chart" style="width:100%; height:360px;"></div>
+            <div id="code-hourly-chart" style="width:100%; display:flex; flex-direction:column; gap:0.65rem;"></div>
         </div>
     </div>
     {% else %}
@@ -165,79 +166,8 @@
     {% endif %}
 </div>
 
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
 (function() {
-    {% if monthly_hist and monthly_hist|length > 0 %}
-    var monthlyData = {{ monthly_hist|tojson }};
-    
-    var siteColors = {};
-    var colorPalette = [
-        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-        '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-        '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
-    ];
-    var colorIdx = 0;
-    
-    var traces = {};
-    monthlyData.forEach(function(monthBlock) {
-        monthBlock.sites.forEach(function(siteRow) {
-            var siteName = siteRow.Site;
-            if (!siteColors[siteName]) {
-                siteColors[siteName] = colorPalette[colorIdx % colorPalette.length];
-                colorIdx++;
-            }
-            if (!traces[siteName]) {
-                traces[siteName] = {
-                    x: [],
-                    y: [],
-                    name: siteName,
-                    type: 'bar',
-                    marker: { color: siteColors[siteName] }
-                };
-            }
-            traces[siteName].x.push(monthBlock.month);
-            traces[siteName].y.push(siteRow.Occurrences);
-        });
-    });
-    
-    var tracesList = Object.values(traces);
-    
-    var layout = {
-        barmode: 'group',
-        xaxis: {
-            title: 'Mois',
-            type: 'category',
-            tickangle: -45
-        },
-        yaxis: {
-            title: 'Occurrences',
-            showgrid: true,
-            gridcolor: 'rgba(0,0,0,0.05)'
-        },
-        plot_bgcolor: '#f9f9f9',
-        bargap: 0.2,
-        showlegend: true,
-        legend: {
-            orientation: 'v',
-            x: 1.02,
-            y: 1,
-            xanchor: 'left'
-        },
-        margin: { l: 60, r: 150, t: 20, b: 80 }
-    };
-    
-    var config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
-    };
-    
-    Plotly.newPlot('monthly-chart', tracesList, layout, config);
-    {% endif %}
-
     const siteOptions = {{ site_options|tojson }};
     const dailyCounts = {{ daily_counts|tojson }};
     const hourlyCounts = {{ hourly_counts|tojson }};
@@ -256,6 +186,67 @@
         '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
         '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#ef4444', '#22c55e'
     ];
+
+    {% if monthly_hist and monthly_hist|length > 0 %}
+    const monthlyData = {{ monthly_hist|tojson }};
+    const monthlyChart = document.getElementById('monthly-chart');
+    const monthlyLegend = document.getElementById('monthly-legend');
+
+    const siteColors = {};
+    let colorIdx = 0;
+
+    function getColor(site) {
+        if (!siteColors[site]) {
+            siteColors[site] = palette[colorIdx % palette.length];
+            colorIdx += 1;
+        }
+        return siteColors[site];
+    }
+
+    function renderMonthlyBars() {
+        if (!monthlyChart) return;
+
+        const maxValue = Math.max(
+            ...monthlyData.flatMap(block => block.sites.map(s => s.Occurrences || 0)),
+            1
+        );
+
+        monthlyChart.innerHTML = monthlyData.map(block => {
+            const segments = block.sites
+                .filter(s => s.Occurrences)
+                .sort((a, b) => b.Occurrences - a.Occurrences)
+                .map(siteRow => {
+                    const width = Math.max((siteRow.Occurrences / maxValue) * 100, 2);
+                    const color = getColor(siteRow.Site);
+                    return `
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <div style="min-width:110px; color:var(--color-text); font-weight:600;">${siteRow.Site}</div>
+                            <div style="flex:1; background:#e2e8f0; border-radius:999px; overflow:hidden; height:12px;">
+                                <div style="width:${width}%; height:100%; background:${color};"></div>
+                            </div>
+                            <div style="min-width:60px; text-align:right; color:var(--color-text); font-weight:700;">${siteRow.Occurrences}</div>
+                        </div>`;
+                }).join('');
+
+            return `
+                <div style="display:flex; flex-direction:column; gap:0.5rem; padding:0.75rem; border:1px solid var(--color-border); border-radius:var(--radius); background:var(--color-bg);">
+                    <div style="font-weight:700; color:var(--color-text);">${block.month}</div>
+                    ${segments || '<div style="color:#64748b;">Pas de données pour ce mois.</div>'}
+                </div>`;
+        }).join('');
+
+        if (monthlyLegend) {
+            const legendItems = Object.keys(siteColors).map(site => `
+                <div style="display:flex; align-items:center; gap:0.35rem; padding:0.35rem 0.5rem; border:1px solid var(--color-border); border-radius:var(--radius); background:var(--color-bg);">
+                    <span style="display:inline-block; width:14px; height:14px; border-radius:3px; background:${siteColors[site]};"></span>
+                    <span style="color:var(--color-text); font-weight:600;">${site}</span>
+                </div>
+            `).join('');
+            monthlyLegend.innerHTML = legendItems;
+        }
+    }
+    renderMonthlyBars();
+    {% endif %}
 
     function getMonthsForSite(site) {
         const months = new Set();
@@ -284,6 +275,16 @@
         return days;
     }
 
+    function buildBarRow(label, segmentsHtml) {
+        return `
+            <div style="display:grid; grid-template-columns:140px 1fr; gap:0.65rem; align-items:center;">
+                <div style="color:var(--color-text); font-weight:600;">${label}</div>
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                    ${segmentsHtml}
+                </div>
+            </div>`;
+    }
+
     function renderDailyChart() {
         if (!dailyChart || !currentSite || !currentMonth) return;
         const monthDays = getAllDaysInMonth(currentMonth);
@@ -301,27 +302,25 @@
             dayPdcMap[key][row.PDC] = row.Occurrences;
         });
 
-        const traces = [];
-        Array.from(pdcSet).sort().forEach((pdc, idx) => {
-            traces.push({
-                x: monthDays,
-                y: monthDays.map(d => (dayPdcMap[d] && dayPdcMap[d][pdc]) || 0),
-                name: String(pdc),
-                type: 'bar',
-                marker: { color: palette[idx % palette.length] }
-            });
-        });
+        const maxValue = Math.max(...filtered.map(r => r.Occurrences || 0), 1);
+        dailyChart.innerHTML = monthDays.map(day => {
+            const segments = Array.from(pdcSet).sort().map((pdc, idx) => {
+                const value = (dayPdcMap[day] && dayPdcMap[day][pdc]) || 0;
+                if (!value) return '';
+                const width = Math.max((value / maxValue) * 100, 4);
+                return `
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <div style="min-width:55px; color:#475569; font-weight:600;">PDC ${pdc}</div>
+                        <div style="flex:1; background:#e2e8f0; height:10px; border-radius:999px; overflow:hidden;">
+                            <div style="width:${width}%; height:100%; background:${palette[idx % palette.length]};"></div>
+                        </div>
+                        <div style="min-width:40px; text-align:right; color:var(--color-text); font-weight:700;">${value}</div>
+                    </div>`;
+            }).join('');
 
-        const layout = {
-            barmode: 'group',
-            bargap: 0.15,
-            xaxis: { title: 'Jour', tickangle: -45 },
-            yaxis: { title: 'Occurrences' },
-            showlegend: true,
-            margin: { t: 10, r: 10, b: 80, l: 50 }
-        };
-
-        Plotly.newPlot(dailyChart, traces, layout, { displayModeBar: false, responsive: true });
+            const content = segments || '<div style="color:#94a3b8;">Aucune occurrence ce jour.</div>';
+            return buildBarRow(day, content);
+        }).join('');
     }
 
     function renderHourlyChart() {
@@ -341,27 +340,26 @@
             hourPdcMap[key][row.PDC] = row.Occurrences;
         });
 
-        const traces = [];
-        Array.from(pdcSet).sort().forEach((pdc, idx) => {
-            traces.push({
-                x: hours,
-                y: hours.map(h => (hourPdcMap[h] && hourPdcMap[h][pdc]) || 0),
-                name: String(pdc),
-                type: 'bar',
-                marker: { color: palette[idx % palette.length] }
-            });
-        });
+        const maxValue = Math.max(...filtered.map(r => r.Occurrences || 0), 1);
+        hourlyChart.innerHTML = hours.map(hour => {
+            const segments = Array.from(pdcSet).sort().map((pdc, idx) => {
+                const value = (hourPdcMap[hour] && hourPdcMap[hour][pdc]) || 0;
+                if (!value) return '';
+                const width = Math.max((value / maxValue) * 100, 4);
+                return `
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <div style="min-width:55px; color:#475569; font-weight:600;">PDC ${pdc}</div>
+                        <div style="flex:1; background:#e2e8f0; height:10px; border-radius:999px; overflow:hidden;">
+                            <div style="width:${width}%; height:100%; background:${palette[idx % palette.length]};"></div>
+                        </div>
+                        <div style="min-width:40px; text-align:right; color:var(--color-text); font-weight:700;">${value}</div>
+                    </div>`;
+            }).join('');
 
-        const layout = {
-            barmode: 'group',
-            bargap: 0.2,
-            xaxis: { title: 'Heure', dtick: 1 },
-            yaxis: { title: 'Occurrences' },
-            showlegend: true,
-            margin: { t: 10, r: 10, b: 50, l: 50 }
-        };
-
-        Plotly.newPlot(hourlyChart, traces, layout, { displayModeBar: false, responsive: true });
+            const label = `${hour.toString().padStart(2, '0')}:00`;
+            const content = segments || '<div style="color:#94a3b8;">Aucune occurrence sur cette heure.</div>';
+            return buildBarRow(label, content);
+        }).join('');
     }
 
     function initSiteMonthDaySelectors() {
