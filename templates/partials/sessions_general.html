@@ -146,7 +146,7 @@
                 </thead>
                 <tbody>
                     {% for row in recap_rows %}
-                    <tr class="recap-row {{ 'site-row' if row.row_type == 'site' else 'pdc-row' }}" {% if row.row_type == 'site' %}data-nav-tab="details-site" data-site-focus="{{ row.site_key }}" title="Voir le détail du site"{% endif %}>
+                    <tr class="recap-row {{ 'site-row' if row.row_type == 'site' else 'pdc-row' }}" data-site-key="{{ row.site_key }}" {% if row.row_type == 'site' %}data-nav-tab="details-site" data-site-focus="{{ row.site_key }}" title="Voir le détail du site"{% endif %}>
                         {% for col in recap_columns %}
                         {% set value = row[col] %}
                         {% set integer_columns = ['Init', 'Lock Connector', 'CableCheck', 'Charge', 'Fin de charge', 'Unknown'] %}
@@ -224,7 +224,22 @@
         var dir = currentSort.col === colIndex && currentSort.dir === 'asc' ? 'desc' : 'asc';
         var mult = dir === 'asc' ? 1 : -1;
 
-        rows.sort(function(a, b) {
+        var groupedRows = rows.reduce(function(map, row) {
+            var key = row.dataset.siteKey || 'unknown';
+            if (!map[key]) {
+                map[key] = { site: null, pdcs: [] };
+            }
+            if (row.classList.contains('site-row')) {
+                map[key].site = row;
+            } else {
+                map[key].pdcs.push(row);
+            }
+            return map;
+        }, {});
+
+        var siteRows = rows.filter(function(row) { return row.classList.contains('site-row'); });
+
+        siteRows.sort(function(a, b) {
             var aVal = parseValue(
                 a.children[colIndex].dataset.sortValue || a.children[colIndex].textContent.trim(),
                 type
@@ -236,7 +251,12 @@
             return aVal < bVal ? -mult : aVal > bVal ? mult : 0;
         });
 
-        rows.forEach(function(row) { tbody.appendChild(row); });
+        siteRows.forEach(function(siteRow) {
+            var siteKey = siteRow.dataset.siteKey || 'unknown';
+            var group = groupedRows[siteKey] || { pdcs: [] };
+            tbody.appendChild(siteRow);
+            group.pdcs.forEach(function(pdcRow) { tbody.appendChild(pdcRow); });
+        });
 
         headers.forEach(function(h) {
             h.classList.remove('sorted-asc', 'sorted-desc');
