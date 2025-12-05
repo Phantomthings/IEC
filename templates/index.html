@@ -628,6 +628,7 @@
             selectedErrorTypes: [],
             moments: [],
             selectedMoments: [],
+            siteFocus: '',
         };
         
         const MOMENT_GROUPS = {
@@ -665,6 +666,9 @@
             const data = await res.json();
             state.allSites = data.sites || [];
             state.sites = [...state.allSites];
+            if (!state.siteFocus && state.allSites.length) {
+                state.siteFocus = state.allSites[0];
+            }
             renderSites();
         }
         
@@ -856,6 +860,9 @@
             } else {
                 if (state.sites.length && state.sites.length < state.allSites.length) p.set('sites', state.sites.join(','));
             }
+            if (state.tab === 'details-site' && state.siteFocus) {
+                p.set('site_focus', state.siteFocus);
+            }
             if (state.dateDebut) p.set('date_debut', state.dateDebut);
             if (state.dateFin) p.set('date_fin', state.dateFin);
             if (state.selectedErrorTypes.length < state.errorTypes.length) p.set('error_types', state.selectedErrorTypes.join(','));
@@ -895,6 +902,9 @@
             const navTarget = event.target.closest('[data-nav-tab]');
             if (navTarget) {
                 const tab = navTarget.dataset.navTab;
+                if (navTarget.dataset.siteFocus) {
+                    state.siteFocus = navTarget.dataset.siteFocus;
+                }
                 const tabBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
                 if (tabBtn) {
                     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
