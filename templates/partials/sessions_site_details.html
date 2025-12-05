@@ -117,6 +117,7 @@
                         <th class="sortable">PDC</th>
                         <th class="sortable" data-type="number">Énergie (kWh)</th>
                         <th class="sortable">MAC</th>
+                        <th class="sortable">Véhicule</th>
                         <th class="sortable" data-type="number">Évolution SOC</th>
                         <th>Lien</th>
                     </tr>
@@ -133,6 +134,7 @@
                             {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
                         </td>
                         <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td>{{ row['Vehicle'] or '—' }}</td>
                         <td style="text-align:right;">{{ row['evolution_soc'] }}</td>
                         <td style="text-align:center;">
                             {% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank" class="mac-link">Ouvrir</a>{% endif %}
@@ -162,6 +164,7 @@
                         <th class="sortable">PDC</th>
                         <th class="sortable" data-type="number">Énergie (kWh)</th>
                         <th class="sortable">MAC</th>
+                        <th class="sortable">Véhicule</th>
                         <th class="sortable">Erreur</th>
                         <th class="sortable">Moment</th>
                         <th class="sortable" data-type="number">Évolution SOC</th>
@@ -180,6 +183,7 @@
                             {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
                         </td>
                         <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td>{{ row['Vehicle'] or '—' }}</td>
                         <td style="color:#dc2626; font-weight:500;">{{ row['type_erreur'] }}</td>
                         <td>{{ row['moment'] }}</td>
                         <td style="text-align:right;">{{ row['evolution_soc'] }}</td>

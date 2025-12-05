@@ -1909,6 +1909,7 @@ async def get_sessions_site_details(
             `Datetime end`,
             `Energy (Kwh)`,
             `MAC Address`,
+            Vehicle,
             type_erreur,
             moment,
             `SOC Start`,
@@ -1989,6 +1990,7 @@ async def get_sessions_site_details(
         "PDC",
         "Energy (Kwh)",
         "MAC Address",
+        "Vehicle",
         "type_erreur",
         "moment",
         "evolution_soc",
@@ -2008,6 +2010,7 @@ async def get_sessions_site_details(
         "PDC",
         "Energy (Kwh)",
         "MAC Address",
+        "Vehicle",
         "evolution_soc",
         "elto",
     ]
