@@ -259,11 +259,11 @@
         {% if error_moment_grouped %}
         <div class="bar-chart">
             {% for item in error_moment_grouped %}
-            {% set color_map = {'Avant charge':'#636EFA','Charge':'#00CC96','Fin de charge':'#AB63FA','Unknown':'#FFA15A'} %}
+            {% set color_map = {'Init':'#636EFA','Lock Connector':'#00CC96','CableCheck':'#AB63FA','Charge':'#FFA15A','Fin de charge':'#19D3F3','Unknown':'#FF6692'} %}
             <div class="bar-row">
-                <span class="bar-label">{{ item.Moment_grp }}</span>
+                <span class="bar-label">{{ item.moment }}</span>
                 <div class="bar-container">
-                    <div class="bar" style="width:{{ item.percent }}%; background:{{ color_map.get(item.Moment_grp, '#3b82f6') }};"></div>
+                    <div class="bar" style="width:{{ item.percent }}%; background:{{ color_map.get(item.moment, '#3b82f6') }};"></div>
                 </div>
                 <span class="bar-value">{{ item.Nb }} ({{ item.percent }}%)</span>
             </div>
