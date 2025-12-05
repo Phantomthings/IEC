@@ -1390,6 +1390,7 @@ async def get_sessions_general(
     sql = f"""
         SELECT
             Site,
+            PDC,
             `State of charge(0:good, 1:error)` as state,
             type_erreur,
             moment
@@ -1424,6 +1425,8 @@ async def get_sessions_general(
     taux_reussite = round(ok / total * 100, 1) if total else 0
     taux_echec = round(nok / total * 100, 1) if total else 0
 
+    df["PDC"] = df.get("PDC", "").astype(str)
+
     stats_site = (
         df.groupby("Site")
         .agg(
@@ -1436,6 +1439,18 @@ async def get_sessions_general(
     stats_site["taux_ok"] = np.where(
         stats_site["total"] > 0,
         (stats_site["ok"] / stats_site["total"] * 100).round(1),
+        0,
+    )
+
+    stats_pdc = (
+        df.groupby(["Site", "PDC"])
+        .agg(total=("is_ok_filt", "count"), ok=("is_ok_filt", "sum"))
+        .reset_index()
+    )
+    stats_pdc["nok"] = stats_pdc["total"] - stats_pdc["ok"]
+    stats_pdc["taux_ok"] = np.where(
+        stats_pdc["total"] > 0,
+        (stats_pdc["ok"] / stats_pdc["total"] * 100).round(1),
         0,
     )
 
@@ -1454,8 +1469,8 @@ async def get_sessions_general(
 
     err = df[~df["is_ok_filt"]].copy()
 
-    recap_columns = []
-    recap_rows = []
+    recap_columns: list[str] = []
+    recap_rows: list[dict] = []
     moment_distribution = []
     moment_total_errors = 0
 
@@ -1470,8 +1485,22 @@ async def get_sessions_general(
             .reset_index()
         )
 
-        moment_cols = [m for m in MOMENT_ORDER if m in err_grouped.columns]
-        moment_cols += [c for c in err_grouped.columns if c not in moment_cols + ["Site"]]
+        err_pdc_grouped = (
+            err.groupby(["Site", "PDC", "moment"])
+            .size()
+            .reset_index(name="Nb")
+            .pivot(index=["Site", "PDC"], columns="moment", values="Nb")
+            .fillna(0)
+            .astype(int)
+            .reset_index()
+        )
+
+        err_moment_cols = [c for c in err_grouped.columns if c not in ["Site"]]
+        err_pdc_moment_cols = [c for c in err_pdc_grouped.columns if c not in ["Site", "PDC"]]
+
+        moment_cols = [m for m in MOMENT_ORDER if m in err_moment_cols or m in err_pdc_moment_cols]
+        extra_moment_cols = [c for c in err_moment_cols + err_pdc_moment_cols if c not in moment_cols]
+        moment_cols += [c for c in extra_moment_cols if c not in moment_cols]
 
         recap = (
             stat_global
@@ -1482,19 +1511,63 @@ async def get_sessions_general(
         )
 
         recap_columns = [
-            "Site",
+            "Site / PDC",
             "Total",
             "Total_OK",
             "Total_NOK",
         ] + moment_cols + ["% OK", "% NOK"]
 
-        recap = recap[recap_columns]
+        recap["Site / PDC"] = recap["Site"]
+
+        for col in moment_cols:
+            if col not in recap.columns:
+                recap[col] = 0
 
         numeric_moment_cols = [c for c in moment_cols if c in recap.columns]
         if numeric_moment_cols:
             recap[numeric_moment_cols] = recap[numeric_moment_cols].astype(int)
 
-        recap_rows = recap.to_dict("records")
+        pdc_recap = (
+            stats_pdc.rename(
+                columns={
+                    "total": "Total",
+                    "ok": "Total_OK",
+                    "nok": "Total_NOK",
+                    "taux_ok": "% OK",
+                }
+            )
+            .assign(**{"% NOK": lambda d: np.where(d["Total"] > 0, (d["Total_NOK"] / d["Total"] * 100).round(2), 0)})
+            .merge(err_pdc_grouped, on=["Site", "PDC"], how="left")
+            .fillna(0)
+        )
+
+        numeric_moment_cols_pdc = [c for c in moment_cols if c in pdc_recap.columns]
+        if numeric_moment_cols_pdc:
+            pdc_recap[numeric_moment_cols_pdc] = pdc_recap[numeric_moment_cols_pdc].astype(int)
+
+        for col in moment_cols:
+            if col not in pdc_recap.columns:
+                pdc_recap[col] = 0
+
+        pdc_recap["Site / PDC"] = "↳ PDC " + pdc_recap["PDC"].astype(str)
+        pdc_recap_display = pdc_recap[[c for c in recap_columns if c in pdc_recap.columns]].copy()
+
+        recap_rows = []
+        for _, row in recap.iterrows():
+            row_dict = row.to_dict()
+            label = row_dict.get("Site / PDC", "")
+            row_dict["Site / PDC"] = f"{label} (Total)" if label else label
+            row_dict.update({"row_type": "site", "site_key": row_dict.get("Site", "")})
+            recap_rows.append(row_dict)
+
+            site_pdcs = pdc_recap[pdc_recap["Site"].eq(row["Site"])].copy()
+            site_pdcs = site_pdcs.sort_values("Total_NOK", ascending=False)
+
+            for _, pdc_row in site_pdcs.iterrows():
+                pdc_dict = pdc_row.to_dict()
+                display_dict = {k: pdc_dict.get(k) for k in pdc_recap_display.columns}
+                display_dict.update({"row_type": "pdc", "site_key": row_dict.get("Site", "")})
+                recap_rows.append(display_dict)
 
         counts_moment = (
             err.groupby("moment")

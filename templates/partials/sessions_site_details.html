@@ -419,6 +419,9 @@
         const params = new URLSearchParams(baseParams.toString());
         const siteSelect = document.getElementById('site-focus');
         if (siteSelect && siteSelect.value) params.set('site_focus', siteSelect.value);
+        if (window.state && siteSelect && siteSelect.value) {
+            window.state.siteFocus = siteSelect.value;
+        }
         const pdcs = Array.from(document.querySelectorAll('input[name="pdc-option"]:checked')).map(el => el.value);
         if (pdcs.length) params.set('pdc', pdcs.join(','));
         htmx.ajax('GET', `/api/sessions/site-details?${params.toString()}`, {target: '#tab-content', swap: 'innerHTML'});

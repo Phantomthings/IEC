@@ -33,6 +33,11 @@
 .mac-table th.sorted-desc::after { content: ' ▼'; color: var(--color-primary); }
 .mac-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; }
 .mac-table tbody tr:hover { background: #f9fafb; }
+.recap-row.site-row { cursor: pointer; }
+.recap-row.site-row:hover { background: #f8fafc; }
+.recap-row.pdc-row td { padding-left: 2.5rem; font-weight: 600; }
+.recap-row.site-row td { font-weight: 700; }
+.recap-row .sub-label { color: var(--color-text-muted); font-weight: 500; }
 
 .recap-grid {
     display: grid;
@@ -141,13 +146,15 @@
                 </thead>
                 <tbody>
                     {% for row in recap_rows %}
-                    <tr>
+                    <tr class="recap-row {{ 'site-row' if row.row_type == 'site' else 'pdc-row' }}" {% if row.row_type == 'site' %}data-nav-tab="details-site" data-site-focus="{{ row.site_key }}" title="Voir le détail du site"{% endif %}>
                         {% for col in recap_columns %}
                         {% set value = row[col] %}
                         {% set integer_columns = ['Init', 'Lock Connector', 'CableCheck', 'Charge', 'Fin de charge', 'Unknown'] %}
                         {% set is_integer = col in integer_columns %}
                         <td data-sort-value="{{ value }}">
-                            {% if col in ['% OK', '% NOK'] %}
+                            {% if col in ['Site / PDC'] and row.row_type == 'pdc' %}
+                                <span class="sub-label">{{ value }}</span>
+                            {% elif col in ['% OK', '% NOK'] %}
                                 {{ value | round(2) }}%
                             {% elif is_integer %}
                                 {{ value | int }}
