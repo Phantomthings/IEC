@@ -652,7 +652,7 @@
         };
         
         // Init month radios
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
         document.getElementById('month-radios').innerHTML = months.map((m, i) => 
             `<label class="month-radio"><input type="radio" name="month" value="${i+1}" ${i+1 === new Date().getMonth()+1 ? 'checked' : ''} onchange="updateDates()"> ${m}</label>`
         ).join('');
