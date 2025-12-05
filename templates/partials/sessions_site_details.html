@@ -1,44 +1,79 @@
 {% set has_data = site_options and site_focus %}
-<div style="display:flex; flex-direction:column; gap:1rem;">
-    <style>
-        .table-wrapper {
-            overflow: auto;
-            max-height: 520px;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-sm);
-        }
-        .table-wrapper table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .table-wrapper thead th {
-            position: sticky;
-            top: 0;
-            background: var(--color-surface);
-            text-align: left;
-            padding: 0.6rem;
-            font-size: 0.85rem;
-            color: var(--color-text-muted);
-            border-bottom: 1px solid var(--color-border);
-            white-space: nowrap;
-        }
-        .table-wrapper tbody td {
-            padding: 0.55rem;
-            border-bottom: 1px solid var(--color-border);
-            font-size: 0.9rem;
-            color: var(--color-text);
-            white-space: nowrap;
-        }
-        .table-wrapper tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
-        .sortable-table thead th[data-sortable] {
-            cursor: pointer;
-        }
-        .sortable-table th.sorted-asc::after { content: ' ▲'; font-size: 0.75rem; color: var(--color-text-muted); }
-        .sortable-table th.sorted-desc::after { content: ' ▼'; font-size: 0.75rem; color: var(--color-text-muted); }
-    </style>
-    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem; display:flex; flex-direction:column; gap:1rem;">
+<style>
+.mac-table-container {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    max-height: 600px;
+    overflow-y: auto;
+}
+.mac-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.mac-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+.mac-table th {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.mac-table th:hover { background: #e2e8f0; }
+.mac-table th.sortable::after { content: ' ⇅'; color: var(--color-text-muted); font-size: 0.75rem; }
+.mac-table th.sorted-asc::after { content: ' ▲'; color: var(--color-primary); }
+.mac-table th.sorted-desc::after { content: ' ▼'; color: var(--color-primary); }
+.mac-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; }
+.mac-table tbody tr:hover { background: #f9fafb; }
+
+.bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.bar-label {
+    min-width: 120px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+.bar-container {
+    flex: 1;
+    height: 28px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.bar {
+    height: 100%;
+}
+.bar-success { background: linear-gradient(90deg, #38AC21, #22c55e); }
+.bar-danger { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.bar-value {
+    min-width: 150px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.text-primary { color: #1d4ed8; }
+.text-danger { color: #dc2626; }
+</style>
+
+<div style="display:flex; flex-direction:column; gap:1.5rem;">
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
         <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
             <div>
                 <div class="filter-label">Site</div>
@@ -50,7 +85,7 @@
             </div>
             <div style="flex:1; min-width:260px;">
                 <div class="filter-label">PDC</div>
-                <div style="border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <div style="border:1px solid var(--color-border); border-radius:var(--radius); padding:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button id="pdc-toggle" class="btn" type="button">{{ '☑ Tous' if pdc_options|length == selected_pdc|length else '☐ Tous' }}</button>
                     {% for p in pdc_options %}
                     <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.9rem;">
@@ -63,229 +98,217 @@
     </div>
 
     {% if not has_data %}
-    <div class="empty-state">
-        <div class="icon">📊</div>
-        <div class="message">Aucune donnée disponible pour ce périmètre.</div>
+    <div style="padding:2rem; text-align:center; color:var(--color-text-muted);">
+        Aucune donnée disponible
     </div>
     {% else %}
-    <div style="display:flex; flex-direction:column; gap:1rem;">
-        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-            <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Charges OK</div>
-            {% if ok_rows %}
-            <div class="table-wrapper">
-                <table class="sortable-table" style="min-width:720px;">
-                    <thead>
-                        <tr>
-                            <th data-sortable="true" data-type="number">#</th>
-                            <th data-sortable="true">ID</th>
-                            <th data-sortable="true">Début</th>
-                            <th data-sortable="true">Fin</th>
-                            <th data-sortable="true">PDC</th>
-                            <th data-sortable="true" data-type="number">Énergie (kWh)</th>
-                            <th data-sortable="true">MAC</th>
-                            <th data-sortable="true" data-type="number">Évolution SOC</th>
-                            <th>Lien</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in ok_rows %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ row['ID'] }}</td>
-                            <td>{{ row['Datetime start'] }}</td>
-                            <td>{{ row['Datetime end'] }}</td>
-                            <td>{{ row['PDC'] }}</td>
-                            <td>{{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '' }}</td>
-                            <td>{{ row['MAC Address'] }}</td>
-                            <td>{{ row['evolution_soc'] }}</td>
-                            <td>{% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank">🔗</a>{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <div class="icon">ℹ️</div>
-                <div class="message">Aucune charge réussie sur ce périmètre.</div>
-            </div>
-            {% endif %}
+    <!-- Charges OK -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Charges OK</h4>
+        {% if ok_rows %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="ok-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-type="number">#</th>
+                        <th class="sortable">ID</th>
+                        <th class="sortable">Début</th>
+                        <th class="sortable">Fin</th>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Énergie (kWh)</th>
+                        <th class="sortable">MAC</th>
+                        <th class="sortable" data-type="number">Évolution SOC</th>
+                        <th>Lien</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in ok_rows %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row['ID'] }}</td>
+                        <td>{{ row['Datetime start'] }}</td>
+                        <td>{{ row['Datetime end'] }}</td>
+                        <td>{{ row['PDC'] }}</td>
+                        <td style="text-align:right;" data-sort-value="{{ row['Energy (Kwh)'] or 0 }}">
+                            {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
+                        </td>
+                        <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td style="text-align:right;">{{ row['evolution_soc'] }}</td>
+                        <td style="text-align:center;">
+                            {% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank" class="mac-link">Ouvrir</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-
-        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-            <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Charges NOK</div>
-            {% if err_rows %}
-            <div class="table-wrapper">
-                <table class="sortable-table" style="min-width:760px;">
-                    <thead>
-                        <tr>
-                            <th data-sortable="true" data-type="number">#</th>
-                            <th data-sortable="true">ID</th>
-                            <th data-sortable="true">Début</th>
-                            <th data-sortable="true">Fin</th>
-                            <th data-sortable="true">PDC</th>
-                            <th data-sortable="true" data-type="number">Énergie (kWh)</th>
-                            <th data-sortable="true">MAC</th>
-                            <th data-sortable="true">Erreur</th>
-                            <th data-sortable="true">Moment</th>
-                            <th data-sortable="true" data-type="number">Évolution SOC</th>
-                            <th>Lien</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in err_rows %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ row['ID'] }}</td>
-                            <td>{{ row['Datetime start'] }}</td>
-                            <td>{{ row['Datetime end'] }}</td>
-                            <td>{{ row['PDC'] }}</td>
-                            <td>{{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '' }}</td>
-                            <td>{{ row['MAC Address'] }}</td>
-                            <td>{{ row['type_erreur'] }}</td>
-                            <td>{{ row['moment'] }}</td>
-                            <td>{{ row['evolution_soc'] }}</td>
-                            <td>{% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank">🔗</a>{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <div class="icon">✅</div>
-                <div class="message">Aucune charge en erreur sur ce périmètre.</div>
-            </div>
-            {% endif %}
-        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge réussie</div>
+        {% endif %}
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
-        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-            <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Récapitulatif des charges par PDC</div>
-            {% if by_pdc %}
-            <div class="table-wrapper">
-                <table class="sortable-table" style="min-width:620px;">
-                    <thead>
-                        <tr>
-                            <th data-sortable="true">PDC</th>
-                            <th data-sortable="true" data-type="number">Total</th>
-                            <th data-sortable="true" data-type="number">OK</th>
-                            <th data-sortable="true" data-type="number">NOK</th>
-                            <th data-sortable="true" data-type="number">% Réussite</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in by_pdc %}
-                        <tr>
-                            <td style="font-weight:600;">{{ row['PDC'] }}</td>
-                            <td>{{ row['Total_Charges'] }}</td>
-                            <td style="color:#15803d;">{{ row['Charges_OK'] }}</td>
-                            <td style="color:#dc2626;">{{ row['Charges_NOK'] }}</td>
-                            <td style="color:#1d4ed8;">{{ row['% Réussite'] }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <div class="icon">📈</div>
-                <div class="message">Aucune charge pour ce site et ces PDC.</div>
-            </div>
-            {% endif %}
+    <!-- Charges NOK -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Charges NOK</h4>
+        {% if err_rows %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="nok-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-type="number">#</th>
+                        <th class="sortable">ID</th>
+                        <th class="sortable">Début</th>
+                        <th class="sortable">Fin</th>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Énergie (kWh)</th>
+                        <th class="sortable">MAC</th>
+                        <th class="sortable">Erreur</th>
+                        <th class="sortable">Moment</th>
+                        <th class="sortable" data-type="number">Évolution SOC</th>
+                        <th>Lien</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in err_rows %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row['ID'] }}</td>
+                        <td>{{ row['Datetime start'] }}</td>
+                        <td>{{ row['Datetime end'] }}</td>
+                        <td>{{ row['PDC'] }}</td>
+                        <td style="text-align:right;" data-sort-value="{{ row['Energy (Kwh)'] or 0 }}">
+                            {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
+                        </td>
+                        <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td style="color:#dc2626; font-weight:500;">{{ row['type_erreur'] }}</td>
+                        <td>{{ row['moment'] }}</td>
+                        <td style="text-align:right;">{{ row['evolution_soc'] }}</td>
+                        <td style="text-align:center;">
+                            {% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank" class="mac-link">Ouvrir</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge en erreur</div>
+        {% endif %}
     </div>
 
-    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-        <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Taux de réussite par PDC</div>
+    <!-- Récapitulatif par PDC -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Récapitulatif des charges par PDC</h4>
+        {% if by_pdc %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="pdc-table">
+                <thead>
+                    <tr>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Total</th>
+                        <th class="sortable" data-type="number">OK</th>
+                        <th class="sortable" data-type="number">NOK</th>
+                        <th class="sortable" data-type="number">% Réussite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in by_pdc %}
+                    <tr>
+                        <td style="font-weight:600;">{{ row['PDC'] }}</td>
+                        <td>{{ row['Total_Charges'] }}</td>
+                        <td style="color:#15803d; font-weight:600;">{{ row['Charges_OK'] }}</td>
+                        <td style="color:#dc2626; font-weight:600;">{{ row['Charges_NOK'] }}</td>
+                        <td style="color:#1d4ed8;" data-sort-value="{{ row['% Réussite'] }}">{{ row['% Réussite'] }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge</div>
+        {% endif %}
+    </div>
+
+    <!-- Taux de réussite par PDC -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Taux de réussite par PDC</h4>
         {% if by_pdc %}
         <div class="bar-chart">
             {% for row in by_pdc %}
             <div class="bar-row">
                 <span class="bar-label">{{ row['PDC'] }}</span>
                 <div class="bar-container">
-                    <div class="bar bar-success" style="width: {{ row['% Réussite'] }}%;"></div>
+                    <div class="bar bar-success" style="width:{{ row['% Réussite'] }}%;"></div>
                 </div>
                 <span class="bar-value text-primary">{{ row['% Réussite'] }}% ({{ row['Charges_OK'] }}/{{ row['Total_Charges'] }})</span>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty-state">
-            <div class="icon">📈</div>
-            <div class="message">Aucune charge pour ce site et ces PDC.</div>
-        </div>
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune donnée</div>
         {% endif %}
     </div>
 
-    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-        <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Moments d’erreur EVI (regroupés)</div>
+    <!-- Moments d'erreur EVI groupés -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Moments d'erreur EVI (regroupés)</h4>
         {% if evi_moment_grouped %}
         <div class="bar-chart">
             {% for item in evi_moment_grouped %}
-            {% set color_map = {
-                'Avant charge': '#636EFA',
-                'Charge': '#00CC96',
-                'Fin de charge': '#AB63FA',
-                'Unknown': '#FFA15A'
-            } %}
+            {% set color_map = {'Avant charge':'#636EFA','Charge':'#00CC96','Fin de charge':'#AB63FA','Unknown':'#FFA15A'} %}
             <div class="bar-row">
                 <span class="bar-label">{{ item.Moment_grp }}</span>
                 <div class="bar-container">
-                    <div class="bar" style="width: {{ item.percent }}%; background: {{ color_map.get(item.Moment_grp, 'var(--color-accent)') }};"></div>
+                    <div class="bar" style="width:{{ item.percent }}%; background:{{ color_map.get(item.Moment_grp, '#3b82f6') }};"></div>
                 </div>
                 <span class="bar-value">{{ item.Nb }} ({{ item.percent }}%)</span>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty-state">
-            <div class="icon">ℹ️</div>
-            <div class="message">Aucun moment d’erreur regroupé sur ce périmètre.</div>
-        </div>
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune donnée</div>
         {% endif %}
     </div>
 
-    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem;">
-        <div style="font-weight:700; margin-bottom:0.75rem; color:var(--color-text);">Répartition des erreurs EVI par moment</div>
+    <!-- Répartition erreurs EVI par moment -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Répartition des erreurs EVI par moment</h4>
         {% if evi_moment %}
         <div class="bar-chart">
             {% for item in evi_moment %}
             <div class="bar-row">
                 <span class="bar-label">{{ item.moment }}</span>
                 <div class="bar-container">
-                    <div class="bar bar-danger" style="width: {{ item.percent }}%;"></div>
+                    <div class="bar bar-danger" style="width:{{ item.percent }}%;"></div>
                 </div>
                 <span class="bar-value text-danger">{{ item.Nb }} ({{ item.percent }}%)</span>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty-state">
-            <div class="icon">📉</div>
-            <div class="message">Aucune erreur EVI pour ce site.</div>
-        </div>
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune erreur EVI</div>
         {% endif %}
     </div>
 
-    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:1rem; display:flex; flex-direction:column; gap:1rem;">
-        <div style="font-weight:700; margin-bottom:0.25rem; color:var(--color-text);">Occurrences des erreurs par code — {{ site_focus }}</div>
-        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
-            <div style="flex:1; min-width:320px;">
-                <div style="font-weight:600; margin-bottom:0.35rem;">Downstream Code PC × Moment</div>
+    <!-- Occurrences erreurs par code -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Occurrences des erreurs par code — {{ site_focus }}</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <!-- Downstream Code PC -->
+            <div>
+                <div style="font-weight:600; margin-bottom:0.75rem;">Downstream Code PC × Moment</div>
                 {% if downstream_occ %}
-                <div class="table-wrapper">
-                    <table class="sortable-table" style="min-width:620px;">
+                <div class="mac-table-container">
+                    <table class="mac-table" id="downstream-table">
                         <thead>
                             <tr>
-                                <th data-sortable="true" data-type="number">#</th>
-                                <th data-sortable="true" data-type="number">Code_PC</th>
+                                <th class="sortable" data-type="number">#</th>
+                                <th class="sortable" data-type="number">Code_PC</th>
                                 {% for m in downstream_moments %}
-                                <th data-sortable="true" data-type="number">{{ m }}</th>
+                                <th class="sortable" data-type="number">{{ m }}</th>
                                 {% endfor %}
-                                <th data-sortable="true" data-type="number">Total</th>
-                                <th data-sortable="true" data-type="number">%</th>
+                                <th class="sortable" data-type="number">Total</th>
+                                <th class="sortable" data-type="number">%</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -304,26 +327,25 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="empty-state">
-                    <div class="icon">ℹ️</div>
-                    <div class="message">Aucun Downstream Code PC non nul sur ce périmètre.</div>
-                </div>
+                <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucun code</div>
                 {% endif %}
             </div>
-            <div style="flex:1; min-width:320px;">
-                <div style="font-weight:600; margin-bottom:0.35rem;">EVI Error Code × Moment</div>
+
+            <!-- EVI Error Code -->
+            <div>
+                <div style="font-weight:600; margin-bottom:0.75rem;">EVI Error Code × Moment</div>
                 {% if evi_occ %}
-                <div class="table-wrapper">
-                    <table class="sortable-table" style="min-width:620px;">
+                <div class="mac-table-container">
+                    <table class="mac-table" id="evi-table">
                         <thead>
                             <tr>
-                                <th data-sortable="true" data-type="number">#</th>
-                                <th data-sortable="true" data-type="number">EVI_Code</th>
+                                <th class="sortable" data-type="number">#</th>
+                                <th class="sortable" data-type="number">EVI_Code</th>
                                 {% for m in evi_occ_moments %}
-                                <th data-sortable="true" data-type="number">{{ m }}</th>
+                                <th class="sortable" data-type="number">{{ m }}</th>
                                 {% endfor %}
-                                <th data-sortable="true" data-type="number">Total</th>
-                                <th data-sortable="true" data-type="number">%</th>
+                                <th class="sortable" data-type="number">Total</th>
+                                <th class="sortable" data-type="number">%</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -342,10 +364,7 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="empty-state">
-                    <div class="icon">ℹ️</div>
-                    <div class="message">Aucun EVI Error Code non nul sur ce périmètre.</div>
-                </div>
+                <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucun code</div>
                 {% endif %}
             </div>
         </div>
@@ -354,93 +373,72 @@
 </div>
 
 <script>
-(() => {
-    const enhanceSortableTables = () => {
-        const tables = document.querySelectorAll('.sortable-table');
-        tables.forEach((table) => {
-            const headers = table.querySelectorAll('th[data-sortable]');
-            const tbody = table.querySelector('tbody');
-            if (!headers.length || !tbody) return;
+(function() {
+    function initSorting(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        var headers = table.querySelectorAll('th.sortable');
+        var tbody = table.querySelector('tbody');
+        var currentSort = { col: null, dir: 'asc' };
 
-            let currentSort = { index: null, dir: 'asc' };
+        function parseValue(text, type) {
+            var cleaned = (text || '').toString().replace(/\s+/g, '').replace('%', '');
+            if (type === 'number') return parseFloat(cleaned) || 0;
+            return cleaned.toLowerCase();
+        }
 
-            const parseValue = (text, type) => {
-                const cleaned = text.replace('%', '').replace(/\s+/g, '');
-                if (type === 'number' && cleaned !== '' && !isNaN(cleaned)) {
-                    return parseFloat(cleaned);
-                }
-                return cleaned.toLowerCase();
-            };
+        function sortTable(colIndex, type) {
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            var dir = currentSort.col === colIndex && currentSort.dir === 'asc' ? 'desc' : 'asc';
+            var mult = dir === 'asc' ? 1 : -1;
 
-            const applySort = (index, type) => {
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                const dirMultiplier = currentSort.dir === 'asc' ? 1 : -1;
+            rows.sort(function(a, b) {
+                var aVal = parseValue(a.children[colIndex].dataset.sortValue || a.children[colIndex].textContent.trim(), type);
+                var bVal = parseValue(b.children[colIndex].dataset.sortValue || b.children[colIndex].textContent.trim(), type);
+                return aVal < bVal ? -mult : aVal > bVal ? mult : 0;
+            });
 
-                rows.sort((a, b) => {
-                    const aCell = a.children[index];
-                    const bCell = b.children[index];
-                    const aVal = parseValue(aCell?.dataset.sortValue ?? aCell?.textContent.trim() ?? '', type);
-                    const bVal = parseValue(bCell?.dataset.sortValue ?? bCell?.textContent.trim() ?? '', type);
+            rows.forEach(function(row) { tbody.appendChild(row); });
+            headers.forEach(function(h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+            headers[colIndex].classList.add('sorted-' + dir);
+            currentSort = { col: colIndex, dir: dir };
+        }
 
-                    if (aVal < bVal) return -1 * dirMultiplier;
-                    if (aVal > bVal) return 1 * dirMultiplier;
-                    return 0;
-                });
-
-                rows.forEach(row => tbody.appendChild(row));
-            };
-
-            const updateIndicators = (clickedIndex) => {
-                headers.forEach((th, idx) => {
-                    th.classList.remove('sorted-asc', 'sorted-desc');
-                    if (idx === clickedIndex) {
-                        th.classList.add(currentSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-                    }
-                });
-            };
-
-            headers.forEach((th, index) => {
-                th.addEventListener('click', () => {
-                    const type = th.dataset.type || 'text';
-                    if (currentSort.index === index) {
-                        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        currentSort = { index, dir: 'asc' };
-                    }
-                    applySort(index, type);
-                    updateIndicators(index);
-                });
+        headers.forEach(function(th, index) {
+            th.addEventListener('click', function() {
+                sortTable(index, th.dataset.type || 'text');
             });
         });
-    };
+    }
 
-    const baseParams = new URLSearchParams("{{ base_query }}");
-    const reload = () => {
-        const params = new URLSearchParams(baseParams.toString());
-        const siteSelect = document.getElementById('site-focus');
+    initSorting('ok-table');
+    initSorting('nok-table');
+    initSorting('pdc-table');
+    initSorting('downstream-table');
+    initSorting('evi-table');
+
+    var baseParams = new URLSearchParams("{{ base_query }}");
+    var reload = function() {
+        var params = new URLSearchParams(baseParams.toString());
+        var siteSelect = document.getElementById('site-focus');
         if (siteSelect && siteSelect.value) params.set('site_focus', siteSelect.value);
-        if (window.state && siteSelect && siteSelect.value) {
-            window.state.siteFocus = siteSelect.value;
-        }
-        const pdcs = Array.from(document.querySelectorAll('input[name="pdc-option"]:checked')).map(el => el.value);
+        var pdcs = Array.from(document.querySelectorAll('input[name="pdc-option"]:checked')).map(function(el) { return el.value; });
         if (pdcs.length) params.set('pdc', pdcs.join(','));
-        htmx.ajax('GET', `/api/sessions/site-details?${params.toString()}`, {target: '#tab-content', swap: 'innerHTML'});
+        htmx.ajax('GET', '/api/sessions/site-details?' + params.toString(), {target: '#tab-content', swap: 'innerHTML'});
     };
 
-    enhanceSortableTables();
-
-    const siteSelect = document.getElementById('site-focus');
+    var siteSelect = document.getElementById('site-focus');
     if (siteSelect) siteSelect.addEventListener('change', reload);
 
-    const pdcToggle = document.getElementById('pdc-toggle');
-    const pdcCheckboxes = Array.from(document.querySelectorAll('input[name="pdc-option"]'));
+    var pdcToggle = document.getElementById('pdc-toggle');
+    var pdcCheckboxes = Array.from(document.querySelectorAll('input[name="pdc-option"]'));
     if (pdcToggle) {
-        pdcToggle.addEventListener('click', () => {
-            const allChecked = pdcCheckboxes.every(el => el.checked);
-            pdcCheckboxes.forEach(el => { el.checked = !allChecked; });
+        pdcToggle.addEventListener('click', function() {
+            var allChecked = pdcCheckboxes.every(function(el) { return el.checked; });
+            pdcCheckboxes.forEach(function(el) { el.checked = !allChecked; });
             reload();
         });
     }
-    pdcCheckboxes.forEach(el => el.addEventListener('change', reload));
+    pdcCheckboxes.forEach(function(el) { el.addEventListener('change', reload); });
 })();
 </script>
