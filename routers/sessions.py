@@ -1912,6 +1912,7 @@ async def get_sessions_site_details(
             Vehicle,
             type_erreur,
             moment,
+            moment_avancee, 
             `SOC Start`,
             `SOC End`,
             `Downstream Code PC`,
