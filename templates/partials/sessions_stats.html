@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td style="text-align: right; color: #10b981;">{{ row.ok }}</td>
                     <td style="text-align: right; color: #ef4444;">{{ row.nok }}</td>
                     <td style="text-align: right; font-weight: 600;">{{ row.percent_ok }}%</td>
-                    <td style="text-align: right;">{{ row.percent_nok }}%</td>
+                    <td style="text-align: right;">{{ '%.2f'|format(row.percent_nok) }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="text-align: right; color: #10b981;">${row.ok}</td>
                 <td style="text-align: right; color: #ef4444;">${row.nok}</td>
                 <td style="text-align: right; font-weight: 600;">${row.percent_ok}%</td>
-                <td style="text-align: right;">${row.percent_nok}%</td>
+                <td style="text-align: right;">${Number(row.percent_nok).toFixed(2)}%</td>
             </tr>`;
         }
         tbody.innerHTML = html;
