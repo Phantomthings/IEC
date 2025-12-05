@@ -292,6 +292,8 @@
             position: relative;
             overflow: hidden;
         }
+
+        .kpi-card[data-nav-tab] { cursor: pointer; }
         .kpi-card::before {
             content: '';
             position: absolute;
@@ -887,6 +889,20 @@
                 state.tab = btn.dataset.tab;
                 refreshTab();
             });
+        });
+
+        document.addEventListener('click', (event) => {
+            const navTarget = event.target.closest('[data-nav-tab]');
+            if (navTarget) {
+                const tab = navTarget.dataset.navTab;
+                const tabBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+                if (tabBtn) {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    tabBtn.classList.add('active');
+                    state.tab = tab;
+                    refreshTab();
+                }
+            }
         });
         
         // Time

@@ -609,6 +609,10 @@ body {
     transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.kpi-card[data-nav-tab] {
+    cursor: pointer;
+}
+
 .kpi-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);

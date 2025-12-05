@@ -7,15 +7,15 @@
         <div class="kpi-label">Défaut{{ 's' if nb_defauts != 1 else '' }} en cours</div>
         <div class="kpi-sublabel">sur {{ nb_sites_defauts }} site{{ 's' if nb_sites_defauts != 1 else '' }}</div>
     </div>
-    <div class="kpi-card {{ suspicious_status }}">
+    <div class="kpi-card {{ suspicious_status }}" data-nav-tab="suspectes">
         <div class="kpi-value">{{ nb_suspicious }}</div>
         <div class="kpi-label">Transactions &lt;1 kWh</div>
     </div>
-    <div class="kpi-card {{ multi_status }}">
+    <div class="kpi-card {{ multi_status }}" data-nav-tab="tentatives">
         <div class="kpi-value">{{ nb_multi }}</div>
         <div class="kpi-label">Multi-tentatives</div>
     </div>
-    <div class="kpi-card {{ alertes_status }}">
+    <div class="kpi-card {{ alertes_status }}" data-nav-tab="alertes">
         <div class="kpi-value">{{ nb_alertes }}</div>
         <div class="kpi-label">Alertes détectées</div>
     </div>
@@ -57,55 +57,6 @@
 </details>
 {% endfor %}
 {% endif %}
-
-<div class="divider"></div>
-
-<!-- Alertes + Top 5 -->
-<div class="grid-2">
-    <div>
-        <div class="section-header">⚠️ Erreurs récurrentes</div>
-        {% if top_sites_alertes %}
-        <div class="bar-chart">
-            {% for item in top_sites_alertes %}
-            <div class="bar-row">
-                <span class="bar-label">{{ item.site }}</span>
-                <div class="bar-container">
-                    <div class="bar bar-danger" style="width: {{ item.percent }}%;"></div>
-                </div>
-                <span class="bar-value text-danger">{{ item.count }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">✅</div>
-            <div>Aucun site en alerte</div>
-        </div>
-        {% endif %}
-    </div>
-    
-    <div>
-        <div class="section-header">🏆 Top 10 Sites - Taux de Réussite</div>
-        {% if top_sites_reussite %}
-        <div class="bar-chart">
-            {% for item in top_sites_reussite %}
-            <div class="bar-row">
-                <span class="bar-label">{{ item.site }}</span>
-                <div class="bar-container">
-                    <div class="bar bar-success" style="width: {{ item.taux_ok }}%;"></div>
-                </div>
-                <span class="bar-value text-success">{{ item.taux_ok }}%</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">📊</div>
-            <div>Aucune donnée</div>
-        </div>
-        {% endif %}
-    </div>
-</div>
 
 <div class="divider"></div>
 
