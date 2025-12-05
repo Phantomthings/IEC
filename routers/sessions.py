@@ -2030,40 +2030,56 @@ async def get_sessions_site_details(
     )
     by_pdc = by_pdc.sort_values(["% Réussite", "PDC"], ascending=[True, True])
 
-    err_evi = err_rows[err_rows["type_erreur"] == "Erreur_EVI"].copy() if not err_rows.empty else pd.DataFrame()
-    evi_moment: list[dict] = []
-    evi_moment_grouped: list[dict] = []
-    if not err_evi.empty and "moment" in err_evi.columns:
-        counts = err_evi.groupby("moment").size().reset_index(name="Nb")
-        total = counts["Nb"].sum()
-        if total:
-            evi_moment = (
-                counts.assign(percent=lambda d: (d["Nb"] / total * 100).round(2))
-                .sort_values("percent", ascending=False)
-                .to_dict("records")
+    error_moment: list[dict] = []
+    error_moment_grouped: list[dict] = []
+    error_moment_adv: list[dict] = []
+    if not err_rows.empty:
+        if "moment" in err_rows.columns:
+            counts = err_rows.groupby("moment").size().reset_index(name="Nb")
+            total = counts["Nb"].sum()
+            if total:
+                error_moment = (
+                    counts.assign(percent=lambda d: (d["Nb"] / total * 100).round(2))
+                    .sort_values("percent", ascending=False)
+                    .to_dict("records")
+                )
+
+            mapping = {
+                "Init": "Avant charge",
+                "Lock Connector": "Avant charge",
+                "CableCheck": "Avant charge",
+                "Charge": "Charge",
+                "Fin de charge": "Fin de charge",
+                "Unknown": "Unknown",
+            }
+
+            counts_grouped = (
+                counts.assign(Moment_grp=counts["moment"].map(mapping))
+                .groupby("Moment_grp", as_index=False)["Nb"].sum()
+                .sort_values("Nb", ascending=False)
             )
 
-        mapping = {
-            "Init": "Avant charge",
-            "Lock Connector": "Avant charge",
-            "CableCheck": "Avant charge",
-            "Charge": "Charge",
-            "Fin de charge": "Fin de charge",
-            "Unknown": "Unknown",
-        }
+            total_grouped = counts_grouped["Nb"].sum()
+            if total_grouped:
+                error_moment_grouped = (
+                    counts_grouped.assign(percent=lambda d: (d["Nb"] / total_grouped * 100).round(2))
+                    .to_dict("records")
+                )
 
-        counts_grouped = (
-            counts.assign(Moment_grp=counts["moment"].map(mapping))
-            .groupby("Moment_grp", as_index=False)["Nb"].sum()
-            .sort_values("Nb", ascending=False)
-        )
-
-        total_grouped = counts_grouped["Nb"].sum()
-        if total_grouped:
-            evi_moment_grouped = (
-                counts_grouped.assign(percent=lambda d: (d["Nb"] / total_grouped * 100).round(2))
-                .to_dict("records")
+        if "moment_avancee" in err_rows.columns:
+            counts_adv = (
+                err_rows.groupby("moment_avancee")
+                .size()
+                .reset_index(name="Nb")
+                .sort_values("Nb", ascending=False)
             )
+
+            total_adv = counts_adv["Nb"].sum()
+            if total_adv:
+                error_moment_adv = (
+                    counts_adv.assign(percent=lambda d: (d["Nb"] / total_adv * 100).round(2))
+                    .to_dict("records")
+                )
 
     downstream_occ: list[dict] = []
     downstream_moments: list[str] = []
@@ -2170,8 +2186,9 @@ async def get_sessions_site_details(
             "err_rows": err_table.to_dict("records"),
             "ok_rows": ok_table.to_dict("records"),
             "by_pdc": by_pdc.to_dict("records"),
-            "evi_moment": evi_moment,
-            "evi_moment_grouped": evi_moment_grouped,
+            "error_moment": error_moment,
+            "error_moment_grouped": error_moment_grouped,
+            "error_moment_adv": error_moment_adv,
             "downstream_occ": downstream_occ,
             "downstream_moments": downstream_moments,
             "evi_occ": evi_occ,
