@@ -2044,28 +2044,7 @@ async def get_sessions_site_details(
                     .sort_values("percent", ascending=False)
                     .to_dict("records")
                 )
-
-            mapping = {
-                "Init": "Avant charge",
-                "Lock Connector": "Avant charge",
-                "CableCheck": "Avant charge",
-                "Charge": "Charge",
-                "Fin de charge": "Fin de charge",
-                "Unknown": "Unknown",
-            }
-
-            counts_grouped = (
-                counts.assign(Moment_grp=counts["moment"].map(mapping))
-                .groupby("Moment_grp", as_index=False)["Nb"].sum()
-                .sort_values("Nb", ascending=False)
-            )
-
-            total_grouped = counts_grouped["Nb"].sum()
-            if total_grouped:
-                error_moment_grouped = (
-                    counts_grouped.assign(percent=lambda d: (d["Nb"] / total_grouped * 100).round(2))
-                    .to_dict("records")
-                )
+                error_moment_grouped = error_moment
 
         if "moment_avancee" in err_rows.columns:
             counts_adv = (
