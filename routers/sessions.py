@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 import pandas as pd
 import numpy as np
 
-from db import query_df, table_exists
+from db import query_df
 from routers.filters import MOMENT_ORDER
 
 EVI_MOMENT = "EVI Status during error"
@@ -32,16 +32,7 @@ def _get_vehicle_strategy():
     if _vehicle_strategy_cache is not None:
         return _vehicle_strategy_cache
 
-    if table_exists("kpi_charges_mac"):
-        _vehicle_strategy_cache = (
-            "c.Vehicle",
-            """
-            LEFT JOIN kpi_charges_mac c
-                ON k.ID = c.ID
-        """
-        )
-    else:
-        _vehicle_strategy_cache = ("NULL AS Vehicle", "")
+    _vehicle_strategy_cache = ("k.Vehicle", "")
 
     return _vehicle_strategy_cache
 

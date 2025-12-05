@@ -650,12 +650,12 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if vehicle_debug_info.has_column and vehicle_debug_info.valid_count == 0 %}
         <br>
         <strong>💡 Suggestion :</strong> Tous les véhicules sont marqués comme "Unknown".
-        Vérifiez que la table <code>kpi_charges_mac</code> contient bien des noms de véhicules
-        et que le JOIN avec <code>kpi_sessions</code> fonctionne correctement (voir le fichier <code>diagnose_vehicle.sql</code>).
+        Vérifiez que la colonne <code>Vehicle</code> de <code>kpi_sessions</code> est correctement remplie
+        et consultez le fichier <code>diagnose_vehicle.sql</code> pour diagnostiquer l'origine des valeurs.
         {% elif not vehicle_debug_info.has_column %}
         <br>
-        <strong>💡 Suggestion :</strong> Les véhicules sont fournis par la table <code>kpi_charges_mac</code>.
-        Vérifiez que cette table existe et possède la colonne <code>Vehicle</code>.
+        <strong>💡 Suggestion :</strong> Les véhicules proviennent de la colonne <code>Vehicle</code> de
+        <code>kpi_sessions</code>. Vérifiez que cette colonne est présente et alimentée.
         {% endif %}
         {% else %}
         Tous les véhicules sont marqués comme "Unknown".

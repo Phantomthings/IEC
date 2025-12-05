@@ -91,16 +91,6 @@ async def search_mac(
     moments: str = Query(default=""),
     mac_query: str = Query(default=""),
 ):
-    if not table_exists("kpi_charges_mac"):
-        return templates.TemplateResponse(
-            "partials/mac_search.html",
-            {
-                "request": request,
-                "error": "Table kpi_charges_mac non disponible",
-                "mac_query": mac_query,
-            }
-        )
-
     if not mac_query or len(mac_query.strip()) < 2:
         return templates.TemplateResponse(
             "partials/mac_search.html",
@@ -118,7 +108,7 @@ async def search_mac(
         sites,
         date_debut,
         date_fin,
-        "c",
+        "s",
         error_alias="s",
         error_types=error_types,
         moments=moments,
@@ -126,21 +116,20 @@ async def search_mac(
 
     sql = f"""
         SELECT
-            c.ID,
-            COALESCE(s.Site, c.Site) as Site,
+            s.ID,
+            s.Site,
             s.PDC,
-            c.`Datetime start`,
+            s.`Datetime start`,
             s.`Datetime end`,
             s.`Energy (Kwh)`,
-            c.`MAC Address` as mac,
-            c.Vehicle,
-            COALESCE(s.`SOC Start`, c.`SOC Start`) as `SOC Start`,
-            COALESCE(s.`SOC End`, c.`SOC End`) as `SOC End`,
+            s.`MAC Address` as mac,
+            s.Vehicle,
+            s.`SOC Start`,
+            s.`SOC End`,
             s.is_ok,
             s.type_erreur,
             s.moment
-        FROM kpi_charges_mac c
-        LEFT JOIN kpi_sessions s ON c.ID = s.ID
+        FROM kpi_sessions s
         WHERE {where_clause}
     """
 
