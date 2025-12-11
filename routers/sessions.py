@@ -1464,6 +1464,7 @@ async def get_sessions_general(
     recap_rows: list[dict] = []
     moment_distribution = []
     moment_total_errors = 0
+    type_distribution: list[dict] = []
 
     if not err.empty:
         err_grouped = (
@@ -1579,6 +1580,18 @@ async def get_sessions_general(
             for _, row in counts_moment.iterrows()
         ]
 
+        type_order = ["Erreur_EVI", "Erreur_DownStream", "Erreur_Unknow_S"]
+        for err_type in type_order:
+            count = int((err["type_erreur"] == err_type).sum())
+            if count:
+                type_distribution.append(
+                    {
+                        "type": err_type.replace("_", " "),
+                        "count": count,
+                        "percent": round(count / total_err * 100, 1) if total_err else 0,
+                    }
+                )
+
     return templates.TemplateResponse(
         "partials/sessions_general.html",
         {
@@ -1592,6 +1605,7 @@ async def get_sessions_general(
             "recap_rows": recap_rows,
             "moment_distribution": moment_distribution,
             "moment_total_errors": moment_total_errors,
+            "type_distribution": type_distribution,
         },
     )
 
@@ -2039,7 +2053,10 @@ async def get_sessions_site_details(
     error_moment: list[dict] = []
     error_moment_grouped: list[dict] = []
     error_moment_adv: list[dict] = []
+    type_distribution: list[dict] = []
+    type_total_errors = 0
     if not err_rows.empty:
+        type_total_errors = int(len(err_rows))
         if "moment" in err_rows.columns:
             counts = err_rows.groupby("moment").size().reset_index(name="Nb")
             total = counts["Nb"].sum()
@@ -2064,6 +2081,18 @@ async def get_sessions_site_details(
                 error_moment_adv = (
                     counts_adv.assign(percent=lambda d: (d["Nb"] / total_adv * 100).round(2))
                     .to_dict("records")
+                )
+
+        type_order = ["Erreur_EVI", "Erreur_DownStream", "Erreur_Unknow_S"]
+        for err_type in type_order:
+            count = int((err_rows["type_erreur"] == err_type).sum())
+            if count:
+                type_distribution.append(
+                    {
+                        "type": err_type.replace("_", " "),
+                        "count": count,
+                        "percent": round(count / type_total_errors * 100, 2) if type_total_errors else 0,
+                    }
                 )
 
     downstream_occ: list[dict] = []
@@ -2177,6 +2206,8 @@ async def get_sessions_site_details(
             "error_moment": error_moment,
             "error_moment_grouped": error_moment_grouped,
             "error_moment_adv": error_moment_adv,
+            "type_distribution": type_distribution,
+            "type_total_errors": type_total_errors,
             "downstream_occ": downstream_occ,
             "downstream_moments": downstream_moments,
             "evi_occ": evi_occ,
