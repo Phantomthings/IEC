@@ -1,0 +1,679 @@
+{% set has_data = site_options and site_focus %}
+<style>
+.mac-table-container {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    max-height: 600px;
+    overflow-y: auto;
+}
+.mac-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.mac-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+.mac-table th {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.mac-table th:hover { background: #e2e8f0; }
+.mac-table th.sortable::after { content: ' ⇅'; color: var(--color-text-muted); font-size: 0.75rem; }
+.mac-table th.sorted-asc::after { content: ' ▲'; color: var(--color-primary); }
+.mac-table th.sorted-desc::after { content: ' ▼'; color: var(--color-primary); }
+.mac-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; }
+.mac-table tbody tr:hover { background: #f9fafb; }
+
+.bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.bar-label {
+    min-width: 120px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+.bar-container {
+    flex: 1;
+    height: 28px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.bar {
+    height: 100%;
+}
+.bar-success { background: linear-gradient(90deg, #38AC21, #22c55e); }
+.bar-danger { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.bar-value {
+    min-width: 150px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.text-primary { color: #1d4ed8; }
+.text-danger { color: #dc2626; }
+
+.site-header {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filters-row {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pdc-selector {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    background: #f8fafc;
+}
+
+.pdc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pdc-toggle-btn {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pdc-toggle-btn:hover {
+    background: #e2e8f0;
+}
+
+.pdc-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.pdc-checkbox-label:hover {
+    background: #e0f2fe;
+}
+
+.pdc-checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.stats-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.stats-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.stats-main {
+    flex: 1;
+}
+
+.stats-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.stats-value {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stats-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: right;
+}
+
+.stats-site {
+    font-size: 1.1rem;
+    font-weight: 600;
+    opacity: 0.95;
+}
+
+.stats-charges {
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.stats-breakdown {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stats-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.stats-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.stats-dot-ok {
+    background: #22c55e;
+}
+
+.stats-dot-nok {
+    background: #ef4444;
+}
+
+@media (max-width: 1024px) {
+    .filters-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .stats-details {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .stats-value {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .site-header {
+        padding: 1rem;
+    }
+    
+    .stats-banner {
+        padding: 1.25rem;
+    }
+    
+    .stats-value {
+        font-size: 2rem;
+    }
+}
+</style>
+
+<div style="display:flex; flex-direction:column; gap:1.5rem;">
+    <!-- Filtres -->
+    <div class="site-header">
+        <div class="filters-row">
+            <!-- Sélecteur de site -->
+            <div class="filter-group">
+                <label class="filter-label">Site</label>
+                <select id="site-focus" class="select-input" style="width:100%;">
+                    {% for site in site_options %}
+                    <option value="{{ site }}" {% if site == site_focus %}selected{% endif %}>{{ site }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Sélecteur PDC -->
+            <div class="filter-group">
+                <label class="filter-label">PDC à afficher</label>
+                <div class="pdc-selector">
+                    <div class="pdc-controls">
+                        <button id="pdc-toggle" class="pdc-toggle-btn" type="button">
+                            {{ '☑ Tout sélectionner' if pdc_options|length == selected_pdc|length else '☐ Tout sélectionner' }}
+                        </button>
+                        <div style="width:1px; height:20px; background:var(--color-border);"></div>
+                        {% for p in pdc_options %}
+                        <label class="pdc-checkbox-label">
+                            <input type="checkbox" name="pdc-option" value="{{ p }}" {% if p in selected_pdc %}checked{% endif %}>
+                            <span>PDC {{ p }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not has_data %}
+    <div style="padding:3rem; text-align:center; color:var(--color-text-muted); background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius);">
+        <div style="font-size:3rem; margin-bottom:0.5rem; opacity:0.3;">📊</div>
+        <div style="font-size:1.1rem; font-weight:600;">Aucune donnée disponible</div>
+        <div style="font-size:0.9rem; margin-top:0.25rem;">Sélectionnez un site et des PDC pour afficher les statistiques</div>
+    </div>
+    {% else %}
+    
+    <!-- Bannière statistiques -->
+    {% set total_charges = (ok_rows|length) + (err_rows|length) %}
+    {% set charges_ok = ok_rows|length %}
+    {% set charges_nok = err_rows|length %}
+    {% set taux_reussite = (charges_ok / total_charges * 100) if total_charges > 0 else 0 %}
+    
+    <div class="stats-banner">
+        <div class="stats-content">
+            <div class="stats-main">
+                <div class="stats-label">Taux de réussite</div>
+                <div class="stats-value">{{ "%.1f"|format(taux_reussite) }}%</div>
+                <div class="stats-breakdown">
+                    <div class="stats-item">
+                        <div class="stats-dot stats-dot-ok"></div>
+                        <span>{{ charges_ok }} réussies</span>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-dot stats-dot-nok"></div>
+                        <span>{{ charges_nok }} échecs</span>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-details">
+                <div class="stats-site">{{ site_focus }}</div>
+                <div class="stats-charges">{{ total_charges }} charge{{ 's' if total_charges > 1 else '' }} au total</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charges OK -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Charges OK</h4>
+        {% if ok_rows %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="ok-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-type="number">#</th>
+                        <th class="sortable">ID</th>
+                        <th class="sortable">Début</th>
+                        <th class="sortable">Fin</th>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Énergie (kWh)</th>
+                        <th class="sortable">MAC</th>
+                        <th class="sortable">Véhicule</th>
+                        <th class="sortable" data-type="number">Évolution SOC</th>
+                        <th>Lien</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in ok_rows %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row['ID'] }}</td>
+                        <td>{{ row['Datetime start'] }}</td>
+                        <td>{{ row['Datetime end'] }}</td>
+                        <td>{{ row['PDC'] }}</td>
+                        <td style="text-align:right;" data-sort-value="{{ row['Energy (Kwh)'] or 0 }}">
+                            {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
+                        </td>
+                        <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td>{{ row['Vehicle'] or '—' }}</td>
+                        <td style="text-align:right;">{{ row['evolution_soc'] }}</td>
+                        <td style="text-align:center;">
+                            {% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank" class="mac-link">Ouvrir</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge réussie</div>
+        {% endif %}
+    </div>
+
+    <!-- Charges NOK -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Charges NOK</h4>
+        {% if err_rows %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="nok-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-type="number">#</th>
+                        <th class="sortable">ID</th>
+                        <th class="sortable">Début</th>
+                        <th class="sortable">Fin</th>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Énergie (kWh)</th>
+                        <th class="sortable">MAC</th>
+                        <th class="sortable">Véhicule</th>
+                        <th class="sortable">Erreur</th>
+                        <th class="sortable">Moment</th>
+                        <th class="sortable" data-type="number">Évolution SOC</th>
+                        <th>Lien</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in err_rows %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row['ID'] }}</td>
+                        <td>{{ row['Datetime start'] }}</td>
+                        <td>{{ row['Datetime end'] }}</td>
+                        <td>{{ row['PDC'] }}</td>
+                        <td style="text-align:right;" data-sort-value="{{ row['Energy (Kwh)'] or 0 }}">
+                            {{ row['Energy (Kwh)']|round(3) if row['Energy (Kwh)'] is not none else '—' }}
+                        </td>
+                        <td class="mac-code">{{ row['MAC Address'] }}</td>
+                        <td>{{ row['Vehicle'] or '—' }}</td>
+                        <td style="color:#dc2626; font-weight:500;">{{ row['type_erreur'] }}</td>
+                        <td>{{ row['moment'] }}</td>
+                        <td style="text-align:right;">{{ row['evolution_soc'] }}</td>
+                        <td style="text-align:center;">
+                            {% if row['elto'] %}<a href="{{ row['elto'] }}" target="_blank" class="mac-link">Ouvrir</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge en erreur</div>
+        {% endif %}
+    </div>
+
+    <!-- Récapitulatif par PDC -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Récapitulatif des charges par PDC</h4>
+        {% if by_pdc %}
+        <div class="mac-table-container">
+            <table class="mac-table" id="pdc-table">
+                <thead>
+                    <tr>
+                        <th class="sortable">PDC</th>
+                        <th class="sortable" data-type="number">Total</th>
+                        <th class="sortable" data-type="number">OK</th>
+                        <th class="sortable" data-type="number">NOK</th>
+                        <th class="sortable" data-type="number">% Réussite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in by_pdc %}
+                    <tr>
+                        <td style="font-weight:600;">{{ row['PDC'] }}</td>
+                        <td>{{ row['Total_Charges'] }}</td>
+                        <td style="color:#15803d; font-weight:600;">{{ row['Charges_OK'] }}</td>
+                        <td style="color:#dc2626; font-weight:600;">{{ row['Charges_NOK'] }}</td>
+                        <td style="color:#1d4ed8;" data-sort-value="{{ row['% Réussite'] }}">{{ row['% Réussite'] }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune charge</div>
+        {% endif %}
+    </div>
+
+    <!-- Taux de réussite par PDC -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Taux de réussite par PDC</h4>
+        {% if by_pdc %}
+        <div class="bar-chart">
+            {% for row in by_pdc %}
+            <div class="bar-row">
+                <span class="bar-label">PDC {{ row['PDC'] }}</span>
+                <div class="bar-container">
+                    <div class="bar bar-success" style="width:{{ row['% Réussite'] }}%;"></div>
+                </div>
+                <span class="bar-value text-primary">{{ row['% Réussite'] }}% ({{ row['Charges_OK'] }}/{{ row['Total_Charges'] }})</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune donnée</div>
+        {% endif %}
+    </div>
+
+    <!-- Erreurs (EVI + Downstream) groupées -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Erreurs (EVI + Downstream)</h4>
+        {% if error_moment_grouped %}
+        <div class="bar-chart">
+            {% for item in error_moment_grouped %}
+            {% set color_map = {'Init':'#636EFA','Lock Connector':'#00CC96','CableCheck':'#AB63FA','Charge':'#FFA15A','Fin de charge':'#19D3F3','Unknown':'#FF6692'} %}
+            <div class="bar-row">
+                <span class="bar-label">{{ item.moment }}</span>
+                <div class="bar-container">
+                    <div class="bar" style="width:{{ item.percent }}%; background:{{ color_map.get(item.moment, '#3b82f6') }};"></div>
+                </div>
+                <span class="bar-value">{{ item.Nb }} ({{ item.percent }}%)</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune donnée</div>
+        {% endif %}
+    </div>
+
+    <!-- Répartition erreurs EVI + Downstream par moment avancé -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Erreurs (EVI + Downstream) (Avancée)</h4>
+        {% if error_moment_adv %}
+        <div class="bar-chart">
+            {% for item in error_moment_adv %}
+            <div class="bar-row">
+                <span class="bar-label">{{ item.moment_avancee }}</span>
+                <div class="bar-container">
+                    <div class="bar bar-danger" style="width:{{ item.percent }}%;"></div>
+                </div>
+                <span class="bar-value text-danger">{{ item.Nb }} ({{ item.percent }}%)</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune erreur (EVI + Downstream)</div>
+        {% endif %}
+    </div>
+
+    <!-- Occurrences erreurs par code -->
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Occurrences des erreurs par code — {{ site_focus }}</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <!-- Downstream Code PC -->
+            <div>
+                <div style="font-weight:600; margin-bottom:0.75rem;">Downstream Code PC × Moment</div>
+                {% if downstream_occ %}
+                <div class="mac-table-container">
+                    <table class="mac-table" id="downstream-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-type="number">#</th>
+                                <th class="sortable" data-type="number">Code_PC</th>
+                                {% for m in downstream_moments %}
+                                <th class="sortable" data-type="number">{{ m }}</th>
+                                {% endfor %}
+                                <th class="sortable" data-type="number">Total</th>
+                                <th class="sortable" data-type="number">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in downstream_occ %}
+                            <tr>
+                                <td>{{ row.Rank }}</td>
+                                <td>{{ row.Code_PC }}</td>
+                                {% for m in downstream_moments %}
+                                <td>{{ row[m] if row[m] is not none else 0 }}</td>
+                                {% endfor %}
+                                <td data-sort-value="{{ row.Total }}">{{ row.Total }}</td>
+                                <td data-sort-value="{{ row.Percent }}">{{ row.Percent|round(2) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucun code</div>
+                {% endif %}
+            </div>
+
+            <!-- EVI Error Code -->
+            <div>
+                <div style="font-weight:600; margin-bottom:0.75rem;">EVI Error Code × Moment</div>
+                {% if evi_occ %}
+                <div class="mac-table-container">
+                    <table class="mac-table" id="evi-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-type="number">#</th>
+                                <th class="sortable" data-type="number">EVI_Code</th>
+                                {% for m in evi_occ_moments %}
+                                <th class="sortable" data-type="number">{{ m }}</th>
+                                {% endfor %}
+                                <th class="sortable" data-type="number">Total</th>
+                                <th class="sortable" data-type="number">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in evi_occ %}
+                            <tr>
+                                <td>{{ row.Rank }}</td>
+                                <td>{{ row.EVI_Code }}</td>
+                                {% for m in evi_occ_moments %}
+                                <td>{{ row[m] if row[m] is not none else 0 }}</td>
+                                {% endfor %}
+                                <td data-sort-value="{{ row.Total }}">{{ row.Total }}</td>
+                                <td data-sort-value="{{ row.Percent }}">{{ row.Percent|round(2) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucun code</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    function initSorting(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        var headers = table.querySelectorAll('th.sortable');
+        var tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        var currentSort = { col: null, dir: 'asc' };
+
+        function parseValue(text, type) {
+            var cleaned = (text || '').toString().replace(/\s+/g, '').replace('%', '');
+            if (type === 'number') return parseFloat(cleaned) || 0;
+            return cleaned.toLowerCase();
+        }
+
+        function sortTable(colIndex, type) {
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            var dir = currentSort.col === colIndex && currentSort.dir === 'asc' ? 'desc' : 'asc';
+            var mult = dir === 'asc' ? 1 : -1;
+
+            rows.sort(function(a, b) {
+                var aVal = parseValue(a.children[colIndex].dataset.sortValue || a.children[colIndex].textContent.trim(), type);
+                var bVal = parseValue(b.children[colIndex].dataset.sortValue || b.children[colIndex].textContent.trim(), type);
+                return aVal < bVal ? -mult : aVal > bVal ? mult : 0;
+            });
+
+            rows.forEach(function(row) { tbody.appendChild(row); });
+            headers.forEach(function(h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+            headers[colIndex].classList.add('sorted-' + dir);
+            currentSort = { col: colIndex, dir: dir };
+        }
+
+        headers.forEach(function(th, index) {
+            th.addEventListener('click', function() {
+                sortTable(index, th.dataset.type || 'text');
+            });
+        });
+    }
+
+    initSorting('ok-table');
+    initSorting('nok-table');
+    initSorting('pdc-table');
+    initSorting('downstream-table');
+    initSorting('evi-table');
+
+    var baseParams = new URLSearchParams("{{ base_query }}");
+    var reload = function() {
+        var params = new URLSearchParams(baseParams.toString());
+        var siteSelect = document.getElementById('site-focus');
+        if (siteSelect && siteSelect.value) params.set('site_focus', siteSelect.value);
+        var pdcs = Array.from(document.querySelectorAll('input[name="pdc-option"]:checked')).map(function(el) { return el.value; });
+        if (pdcs.length) params.set('pdc', pdcs.join(','));
+        htmx.ajax('GET', '/api/sessions/site-details?' + params.toString(), {target: '#tab-content', swap: 'innerHTML'});
+    };
+
+    var siteSelect = document.getElementById('site-focus');
+    if (siteSelect) siteSelect.addEventListener('change', reload);
+
+    var pdcToggle = document.getElementById('pdc-toggle');
+    var pdcCheckboxes = Array.from(document.querySelectorAll('input[name="pdc-option"]'));
+    if (pdcToggle) {
+        pdcToggle.addEventListener('click', function() {
+            var allChecked = pdcCheckboxes.every(function(el) { return el.checked; });
+            pdcCheckboxes.forEach(function(el) { el.checked = !allChecked; });
+            reload();
+        });
+    }
+    pdcCheckboxes.forEach(function(el) { el.addEventListener('change', reload); });
+})();
+</script>

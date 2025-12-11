@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - IE Charge Dashboard</title>
+    <style>
+        :root {
+            --color-bg: #f8fafc;
+            --color-surface: #ffffff;
+            --color-border: #e2e8f0;
+            --color-text: #1e293b;
+            --color-muted: #64748b;
+            --color-primary: #dc2626;
+            --radius: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'DM Sans', Arial, sans-serif;
+            background: var(--color-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--color-text);
+        }
+
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+        }
+
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        h1 { margin-bottom: 0.25rem; font-size: 1.5rem; }
+        p { margin-top: 0; color: var(--color-muted); margin-bottom: 1.5rem; }
+
+        label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 0.9rem;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background: #f9fafb;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--color-primary);
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        button:hover { opacity: 0.95; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: none;
+        }
+
+        button.loading .spinner { display: block; }
+        button.loading .btn-text { display: none; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert { margin-top: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.95rem; }
+        .alert.error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert.success { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logos">
+            <img src="assets/iecharge.png" alt="IE Charge Logo" class="logo">
+            <img src="assets/nidec.png" alt="Nidec Logo" class="logo">
+        </div>
+
+        <h1>Connexion</h1>
+        <p>Identifiez-vous pour accéder au dashboard.</p>
+
+        <form id="login-form">
+            <label for="username">Nom d'utilisateur</label>
+            <input type="text" id="username" name="username" placeholder="Nom.Prénom" required>
+
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" name="password" placeholder="********" required>
+
+            <button type="submit" id="submit-btn">
+                <span class="spinner"></span>
+                <span class="btn-text">Se connecter</span>
+            </button>
+        </form>
+
+        <div id="message" class="alert" style="display:none"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const messageBox = document.getElementById('message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            messageBox.style.display = 'none';
+            
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+            const body = new URLSearchParams(formData);
+
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+
+                if (!response.ok) {
+                    throw new Error('Identifiants incorrects');
+                }
+
+                messageBox.textContent = 'Connexion réussie, redirection...';
+                messageBox.className = 'alert success';
+                messageBox.style.display = 'block';
+                setTimeout(() => window.location.href = '/dashboard', 400);
+            } catch (error) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                messageBox.textContent = error.message || 'Erreur lors de la connexion';
+                messageBox.className = 'alert error';
+                messageBox.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
