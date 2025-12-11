@@ -524,6 +524,26 @@
         {% endif %}
     </div>
 
+    <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
+        <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Répartition des types d'erreur (EVI / Downstream / Erreur Unknow S)</h4>
+        {% if type_distribution %}
+        <div class="bar-chart">
+            {% for item in type_distribution %}
+            <div class="bar-row">
+                <span class="bar-label">{{ item.type }}</span>
+                <div class="bar-container">
+                    <div class="bar bar-danger" style="width:{{ item.percent }}%;"></div>
+                </div>
+                <span class="bar-value text-danger">{{ item.count }} ({{ item.percent }}%)</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 1rem; font-weight:600; color:var(--color-text);">Total erreurs : {{ type_total_errors }}</div>
+        {% else %}
+        <div style="padding:1rem; color:var(--color-text-muted); text-align:center;">Aucune erreur pour ces types</div>
+        {% endif %}
+    </div>
+
     <!-- Occurrences erreurs par code -->
     <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:1.5rem;">
         <h4 style="font-size:1.05rem; font-weight:700; margin:0 0 1rem 0; color:var(--color-text);">Occurrences des erreurs par code — {{ site_focus }}</h4>
